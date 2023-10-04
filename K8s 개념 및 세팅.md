@@ -637,19 +637,19 @@ kubectl [command] [TYPE] [NAME] [flags]
 
 command 		하나 이상의 리소스를 조작하기 위한 명령어 (예: create, get, describe, delete)
 TYPE		  	리소스 타입
-			      대소문자를 구분, 단수, 복수, 단축형으로 명시 가능
+			대소문자를 구분, 단수, 복수, 단축형으로 명시 가능
 
 root@master:/home/vagrant# kubectl get nodes		⇐ 복수
 NAME      STATUS   ROLES           AGE    VERSION
 master    Ready    control-plane   126m   v1.28.2
 worker1   Ready    <none>          125m   v1.28.2
 worker2   Ready    <none>          125m   v1.28.2
-root@master:/home/vagrant# kubectl get node			⇐ 단수
+root@master:/home/vagrant# kubectl get node		⇐ 단수
 NAME      STATUS   ROLES           AGE    VERSION
 master    Ready    control-plane   126m   v1.28.2
 worker1   Ready    <none>          125m   v1.28.2
 worker2   Ready    <none>          125m   v1.28.2
-root@master:/home/vagrant# kubectl get no			⇐ 단축형
+root@master:/home/vagrant# kubectl get no		⇐ 단축형
 NAME      STATUS   ROLES           AGE    VERSION
 master    Ready    control-plane   127m   v1.28.2
 worker1   Ready    <none>          125m   v1.28.2
