@@ -158,3 +158,66 @@ kube-system   kube-proxy-87llf                   1/1     Running   0            
 kube-system   kube-scheduler-minikube            1/1     Running   0             75s
 kube-system   storage-provisioner                1/1     Running   2 (60s ago)   72s
 ```
+
+### 대시보드 실행 ###
+```
+PS C:\Users\User> minikube addons list
+W1004 10:45:15.069064   13264 main.go:291] Unable to resolve the current Docker CLI context "default": context "default": context not found: open C:\Users\User\.docker\contexts\meta\37a8eec1ce19687d132fe29051dca629d164e2c4958ba141d5f4133a33f0688f\meta.json: The system cannot find the path specified.
+|-----------------------------|----------|--------------|--------------------------------|
+|         ADDON NAME          | PROFILE  |    STATUS    |           MAINTAINER           |
+|-----------------------------|----------|--------------|--------------------------------|
+| ambassador                  | minikube | disabled     | 3rd party (Ambassador)         |
+| auto-pause                  | minikube | disabled     | minikube                       |
+| cloud-spanner               | minikube | disabled     | Google                         |
+| csi-hostpath-driver         | minikube | disabled     | Kubernetes                     |
+| dashboard                   | minikube | disabled     | Kubernetes                     |
+| default-storageclass        | minikube | enabled ✅   | Kubernetes                     |
+| efk                         | minikube | disabled     | 3rd party (Elastic)            |
+| freshpod                    | minikube | disabled     | Google                         |
+| gcp-auth                    | minikube | disabled     | Google                         |
+| gvisor                      | minikube | disabled     | minikube                       |
+| headlamp                    | minikube | disabled     | 3rd party (kinvolk.io)         |
+| helm-tiller                 | minikube | disabled     | 3rd party (Helm)               |
+| inaccel                     | minikube | disabled     | 3rd party (InAccel             |
+|                             |          |              | [info@inaccel.com])            |
+| ingress                     | minikube | disabled     | Kubernetes                     |
+| ingress-dns                 | minikube | disabled     | minikube                       |
+| inspektor-gadget            | minikube | disabled     | 3rd party                      |
+|                             |          |              | (inspektor-gadget.io)          |
+| istio                       | minikube | disabled     | 3rd party (Istio)              |
+| istio-provisioner           | minikube | disabled     | 3rd party (Istio)              |
+| kong                        | minikube | disabled     | 3rd party (Kong HQ)            |
+| kubevirt                    | minikube | disabled     | 3rd party (KubeVirt)           |
+| logviewer                   | minikube | disabled     | 3rd party (unknown)            |
+| metallb                     | minikube | disabled     | 3rd party (MetalLB)            |
+| metrics-server              | minikube | disabled     | Kubernetes                     |
+| nvidia-driver-installer     | minikube | disabled     | 3rd party (Nvidia)             |
+| nvidia-gpu-device-plugin    | minikube | disabled     | 3rd party (Nvidia)             |
+| olm                         | minikube | disabled     | 3rd party (Operator Framework) |
+| pod-security-policy         | minikube | disabled     | 3rd party (unknown)            |
+| portainer                   | minikube | disabled     | 3rd party (Portainer.io)       |
+| registry                    | minikube | disabled     | minikube                       |
+| registry-aliases            | minikube | disabled     | 3rd party (unknown)            |
+| registry-creds              | minikube | disabled     | 3rd party (UPMC Enterprises)   |
+| storage-provisioner         | minikube | enabled ✅   | minikube                       |
+| storage-provisioner-gluster | minikube | disabled     | 3rd party (Gluster)            |
+| volumesnapshots             | minikube | disabled     | Kubernetes                     |
+|-----------------------------|----------|--------------|--------------------------------|
+```
+```
+PS C:\Users\User> minikube dashboard
+W1004 10:45:58.763280   12504 main.go:291] Unable to resolve the current Docker CLI context "default": context "default": context not found: open C:\Users\User\.docker\contexts\meta\37a8eec1ce19687d132fe29051dca629d164e2c4958ba141d5f4133a33f0688f\meta.json: The system cannot find the path specified.
+* 대시보드를 활성화하는 중 ...
+  - Using image docker.io/kubernetesui/dashboard:v2.7.0
+  - Using image docker.io/kubernetesui/metrics-scraper:v1.0.8
+* Some dashboard features require the metrics-server addon. To enable all features please run:
+
+        minikube addons enable metrics-server
+
+
+* Verifying dashboard health ...
+* 프록시를 시작하는 중 ...
+* Verifying proxy health ...
+* Opening http://127.0.0.1:55372/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/ in your default browser...
+```
+
