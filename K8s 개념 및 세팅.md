@@ -590,3 +590,154 @@ all:
 
 중간에 나오는 password 입력 (vagrant)
 ```
+
+### 가상환경 비활성화 및 노드, 컴포넌트 상태 확인 ###
+```
+## 가상환경 비활성화
+(venv) vagrant@master:~$ deactivate
+
+
+## root 사용자로 이동해서 노드 상태 확인
+vagrant@master:~$ sudo su
+
+root@master:/home/vagrant# kubectl get nodes
+NAME      STATUS   ROLES           AGE   VERSION
+master    Ready    control-plane   49m   v1.28.2
+worker1   Ready    <none>          42m   v1.28.2
+worker2   Ready    <none>          41m   v1.28.2
+
+
+## 컴포넌트 상태 확인
+root@master:/home/vagrant# kubectl get componentstatus
+Warning: v1 ComponentStatus is deprecated in v1.19+
+NAME                 STATUS    MESSAGE                         ERROR
+controller-manager   Healthy   ok
+scheduler            Healthy   ok
+etcd-0               Healthy   {"health":"true","reason":""}
+
+root@master:/home/vagrant# kubectl get --raw='/readyz?verbose'
+```
+
+## kubectl ##
+- 쿠버네티스 클러스터를 관리하는 명령행 도구(CLI)
+- 로컬 환경, 매니지드 환경 모두 사용 가능
+- 쿠버네티스 자원을 생성, 업데이트, 삭제(create, update, delete)
+- 디버그, 모니터링, 트러블 슈팅(log, exec, cp, top, attach, ..)
+- 클러스터를 관리(cordon, top, drain, taint, ....)
+
+- 설치방법
+https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/
+
+- 사용법
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+- 기본 사용법
+```
+kubectl [command] [TYPE] [NAME] [flags]
+
+command 		하나 이상의 리소스를 조작하기 위한 명령어 (예: create, get, describe, delete)
+TYPE		  	리소스 타입
+			      대소문자를 구분, 단수, 복수, 단축형으로 명시 가능
+
+root@master:/home/vagrant# kubectl get nodes		⇐ 복수
+NAME      STATUS   ROLES           AGE    VERSION
+master    Ready    control-plane   126m   v1.28.2
+worker1   Ready    <none>          125m   v1.28.2
+worker2   Ready    <none>          125m   v1.28.2
+root@master:/home/vagrant# kubectl get node			⇐ 단수
+NAME      STATUS   ROLES           AGE    VERSION
+master    Ready    control-plane   126m   v1.28.2
+worker1   Ready    <none>          125m   v1.28.2
+worker2   Ready    <none>          125m   v1.28.2
+root@master:/home/vagrant# kubectl get no			⇐ 단축형
+NAME      STATUS   ROLES           AGE    VERSION
+master    Ready    control-plane   127m   v1.28.2
+worker1   Ready    <none>          125m   v1.28.2
+worker2   Ready    <none>          125m   v1.28.2
+
+NAME			리소스 이름
+			    대소문자를 구분
+			    kubectl get nodes 와 같이 리소스 이름을 생략하면 모든 리소스 정보를 출력
+
+root@master:/home/vagrant# kubectl get nodes
+NAME      STATUS   ROLES           AGE    VERSION
+master    Ready    control-plane   132m   v1.28.2
+worker1   Ready    <none>          130m   v1.28.2
+worker2   Ready    <none>          131m   v1.28.2
+root@master:/home/vagrant# kubectl get nodes master
+NAME     STATUS   ROLES           AGE    VERSION
+master   Ready    control-plane   132m   v1.28.2
+
+
+여러 리소스를 조작할 경우 리소스 타입과 리소스 이름을 명시해야 함
+TYPE name1 name2 ... nameN
+
+root@master:/home/vagrant# kubectl get nodes master worker1
+NAME      STATUS   ROLES           AGE    VERSION
+master    Ready    control-plane   134m   v1.28.2
+worker1   Ready    <none>          132m   v1.28.2
+
+TYPE1/name1 TYPE2/name2 ... TYPEN/nameN
+root@master:/home/vagrant# kubectl get nodes master
+NAME      STATUS   ROLES           AGE    VERSION
+master    Ready    control-plane   132m   v1.28.2
+root@master:/home/vagrant# kubectl get namespace default
+NAME              STATUS   AGE
+default           Active   135m
+root@master:/home/vagrant# kubectl get nodes/master namespace/default
+NAME          STATUS   ROLES           AGE    VERSION
+node/master   Ready    control-plane   135m   v1.28.2
+
+NAME                STATUS   AGE
+namespace/default   Active   135m
+
+
+FLAG			부가적으로 설정하는 옵션
+
+root@master:/home/vagrant# kubectl get nodes
+NAME      STATUS     ROLES           AGE    VERSION
+master    Ready      control-plane   137m   v1.28.2
+worker1   Ready      <none>          136m   v1.28.2
+worker2   NotReady   <none>          136m   v1.28.2
+
+root@master:/home/vagrant# kubectl get nodes -o wide
+NAME      STATUS   ROLES           AGE    VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+master    Ready    control-plane   137m   v1.28.2   192.168.10.100   <none>        Ubuntu 22.04.3 LTS   5.15.0-84-generic   containerd://1.7.6
+worker1   Ready    <none>          136m   v1.28.2   192.168.10.110   <none>        Ubuntu 22.04.3 LTS   5.15.0-84-generic   containerd://1.7.6
+worker2   Ready    <none>          136m   v1.28.2   192.168.10.120   <none>        Ubuntu 22.04.3 LTS   5.15.0-84-generic   containerd://1.7.6
+
+root@master:/home/vagrant# kubectl get nodes -o JSON
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "kind": "Node",
+            "metadata": {
+                "annotations": {
+                    "kubeadm.alpha.kubernetes.io/cri-socket": "unix:///var/run/containerd/containerd.sock",
+                    "node.alpha.kubernetes.io/ttl": "0",
+                    "projectcalico.org/IPv4Address": "192.168.10.100/24",
+                    "projectcalico.org/IPv4VXLANTunnelAddr": "10.233.97.128",
+                    "volumes.kubernetes.io/controller-managed-attach-detach": "true"
+                },
+                	... 생략 ... 
+
+```
+
+## 쿠버네티스 리소스 ##
+```
+node		                컨테이너를 배치하는 서버
+namespace	              쿠버네티스 클러스터 안의 가상 클러스터 
+pod		                  컨테이너 집합 중 가장 작은 단위로 컨테이너의 실행 방법을 정의
+replicaset              같은 스펙을 갖는 파드를 여러 개 생성하고 관리하는 역할
+deployment              replicaset의 리비전을 관리
+service                 파드의 집합에 접근하기 위한 경로를 정의
+ingress                 서비스를 쿠버네티스 클러스트 외부로 노출
+configmap               설정 정보를 정의하고 피드에 전달
+secrete                 인증 정보와 같은 기밀 데이터를 정의
+persistentvolume		    파드가 사용할 스토리지의 크기 및 종류를 정의
+persistentvolumeclaim		퍼시스턴트 볼륨을 동적으로 확보
+job                     상주 실행을 목적으로 하지 않는 파드를 여러 개 생성하고 정상적인 종료를 보장
+cronjob                 cron 문법으로 스케줄링되는 job
+```
