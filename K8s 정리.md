@@ -1,0 +1,160 @@
+## 쿠버네티스(K8s, Kubernetes) ##
+- 컨테이너 기반의 애플리케이션을 개발하고 배포할 수 있도록 설계된 오픈 소스 플랫폼
+- 컨테이너 오케스트레이션 도구의 사실상 표준
+- 쿠버네티스의 필요성과 활용
+https://kubernetes.io/ko/docs/concepts/overview/#why-you-need-kubernetes-and-what-can-it-do
+
+- 쿠버네티스 컴포넌트 
+https://kubernetes.io/ko/docs/concepts/overview/components/
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/03f906dc-914c-409e-bf0b-403cccb0ce0c)
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/2db3af24-4f57-4c6b-a2f3-33240355c8d8)
+
+## 쿠버네티스 설치 환경 ##
+### 개발 용도의 쿠버네티스 설치(단일 노드) ###
+- minikube
+- Docker for Mac/Windows에 내장된 커부네티스
+
+### 서비스 테스트 또는 운영 용도의 쿠버네티스 설치(다중 노드) ###
+- kops
+- kubespray
+- kubeadm
+- EKS, AKS, GKE 등의 매니지드 서비스
+
+## Docker Desktop에서 Kubernetes 사용 ##
+### 명령어 확인 ###
+```
+C:\Users\User>kubectl get nodes
+
+NAME             STATUS   ROLES           AGE   VERSION
+docker-desktop   Ready    control-plane   17m   v1.27.2
+```
+```
+C:\Users\User>docker container ls
+
+CONTAINER ID   IMAGE                       COMMAND                   CREATED          STATUS          PORTS     NAMES
+830a67941cb8   556098075b3d                "/kube-vpnkit-forwar…"   18 minutes ago   Up 18 minutes             k8s_vpnkit-controller_vpnkit-controller_kube-system_70efb662-8b41-453a-80e6-536d4e9ba7ad_0
+c3ebc617515b   99f89471f470                "/storage-provisione…"   18 minutes ago   Up 18 minutes             k8s_storage-provisioner_storage-provisioner_kube-system_b1ffe738-873e-4322-829f-b618e81c1f0c_0
+974ba74113d8   registry.k8s.io/pause:3.9   "/pause"                  18 minutes ago   Up 18 minutes             k8s_POD_vpnkit-controller_kube-system_70efb662-8b41-453a-80e6-536d4e9ba7ad_0
+25472c797a8b   registry.k8s.io/pause:3.9   "/pause"                  18 minutes ago   Up 18 minutes             k8s_POD_storage-provisioner_kube-system_b1ffe738-873e-4322-829f-b618e81c1f0c_0
+5b89f7b76687   ead0a4a53df8                "/coredns -conf /etc…"   18 minutes ago   Up 18 minutes             k8s_coredns_coredns-5d78c9869d-l677b_kube-system_f2589dff-7566-45bd-80cb-46cb485d8d8c_0
+9d7638218676   ead0a4a53df8                "/coredns -conf /etc…"   18 minutes ago   Up 18 minutes             k8s_coredns_coredns-5d78c9869d-bfg57_kube-system_4e628e20-6778-4a8a-a7b6-62df17d2bee2_0
+c2b00ef45db0   registry.k8s.io/pause:3.9   "/pause"                  18 minutes ago   Up 18 minutes             k8s_POD_coredns-5d78c9869d-bfg57_kube-system_4e628e20-6778-4a8a-a7b6-62df17d2bee2_0
+d85c69e909ad   registry.k8s.io/pause:3.9   "/pause"                  18 minutes ago   Up 18 minutes             k8s_POD_coredns-5d78c9869d-l677b_kube-system_f2589dff-7566-45bd-80cb-46cb485d8d8c_0
+cc0c34b27e63   b8aa50768fd6                "/usr/local/bin/kube…"   18 minutes ago   Up 18 minutes             k8s_kube-proxy_kube-proxy-rlxtl_kube-system_80f805a6-1816-4d2b-b22d-968eb008b227_0
+d30d2ae77084   registry.k8s.io/pause:3.9   "/pause"                  18 minutes ago   Up 18 minutes             k8s_POD_kube-proxy-rlxtl_kube-system_80f805a6-1816-4d2b-b22d-968eb008b227_0
+38459f9a991d   ac2b7465ebba                "kube-controller-man…"   19 minutes ago   Up 19 minutes             k8s_kube-controller-manager_kube-controller-manager-docker-desktop_kube-system_6d2a77df9cc3ca29a2153e8e119160ab_0
+23b35ff251fb   89e70da428d2                "kube-scheduler --au…"   19 minutes ago   Up 19 minutes             k8s_kube-scheduler_kube-scheduler-docker-desktop_kube-system_458a31e42f7d01ae485acb25e3254451_0
+0c3eef02f337   86b6af7dd652                "etcd --advertise-cl…"   19 minutes ago   Up 19 minutes             k8s_etcd_etcd-docker-desktop_kube-system_a652e9966ea47b54b0275eed498b1cab_0
+3403bae352a0   c5b13e4f7806                "kube-apiserver --ad…"   19 minutes ago   Up 19 minutes             k8s_kube-apiserver_kube-apiserver-docker-desktop_kube-system_2c5ac5deb80203a34d3d0ae47868dbee_0
+5301d33aa8b3   registry.k8s.io/pause:3.9   "/pause"                  19 minutes ago   Up 19 minutes             k8s_POD_kube-controller-manager-docker-desktop_kube-system_6d2a77df9cc3ca29a2153e8e119160ab_0
+42be46899193   registry.k8s.io/pause:3.9   "/pause"                  19 minutes ago   Up 19 minutes             k8s_POD_kube-apiserver-docker-desktop_kube-system_2c5ac5deb80203a34d3d0ae47868dbee_0
+a81a2080d64f   registry.k8s.io/pause:3.9   "/pause"                  19 minutes ago   Up 19 minutes             k8s_POD_kube-scheduler-docker-desktop_kube-system_458a31e42f7d01ae485acb25e3254451_0
+c744e252f9cf   registry.k8s.io/pause:3.9   "/pause"                  19 minutes ago   Up 19 minutes             k8s_POD_etcd-docker-desktop_kube-system_a652e9966ea47b54b0275eed498b1cab_0
+```
+### 애플리케이션 배포 ###
+```
+C:\Users\User>kubectl create deployment hello-k8s --image=k8s.gcr.io/echoserver:1.4
+deployment.apps/hello-k8s created
+```
+### 애플리케이션 확인 ###
+```
+C:\Users\User>kubectl get deployment
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+hello-k8s   1/1     1            1           13s
+```
+```
+C:\Users\User>kubectl get deployment -o wide
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                      SELECTOR
+hello-k8s   1/1     1            1           56s   echoserver   k8s.gcr.io/echoserver:1.4   app=hello-k8s
+```
+```
+C:\Users\User>kubectl get pod,replicaset,deployment -o wide
+NAME                             READY   STATUS    RESTARTS   AGE   IP         NODE             NOMINATED NODE   READINESS GATES
+pod/hello-k8s-75797f94b4-crp5n   1/1     Running   0          91s   10.1.0.8   docker-desktop   <none>           <none>
+
+NAME                                   DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES                      SELECTOR
+replicaset.apps/hello-k8s-75797f94b4   1         1         1       91s   echoserver   k8s.gcr.io/echoserver:1.4   app=hello-k8s,pod-template-hash=75797f94b4
+
+NAME                        READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                      SELECTOR
+deployment.apps/hello-k8s   1/1     1            1           91s   echoserver   k8s.gcr.io/echoserver:1.4   app=hello-k8s
+```
+```
+C:\Users\User>kubectl get all
+NAME                             READY   STATUS    RESTARTS   AGE
+pod/hello-k8s-75797f94b4-crp5n   1/1     Running   0          3m38s
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   28m
+
+NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/hello-k8s   1/1     1            1           3m38s
+
+NAME                                   DESIRED   CURRENT   READY   AGE
+replicaset.apps/hello-k8s-75797f94b4   1         1         1       3m38s
+```
+### 애플리케이션 삭제 ###
+```
+C:\Users\User>kubectl delete deployment hello-k8s
+deployment.apps "hello-k8s" deleted
+```
+
+### 서비스 확인 ###
+```
+C:\Users\User>kubectl get service -o wide
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   27m   <none>
+```
+
+### NodePort 생성 ###
+```
+C:\Users\User>kubectl expose deployment hello-k8s --type=NodePort --port=8080
+service/hello-k8s exposed
+```
+```
+C:\Users\User>kubectl get service -o wide
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE   SELECTOR
+hello-k8s    NodePort    10.103.208.92   <none>        8080:30963/TCP   17s   app=hello-k8s
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP          33m   <none>
+```
+### Port-forward ###
+```
+C:\Users\User>kubectl port-forward service/hello-k8s 9090:8080
+Forwarding from 127.0.0.1:9090 -> 8080
+Forwarding from [::1]:9090 -> 8080
+```
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/7d7be733-2a98-4cac-81f6-39599a36d713)
+
+## minikube를 활용한 단일 노드 쿠버네티스 클러스터 구성 ##
+### 설치 방법 ###
+https://minikube.sigs.k8s.io/docs/start/
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/be59d6f4-31c9-4caa-9dbf-3dbf7d13c8aa)
+
+- 1번 2번 과정 수행 후 별도의 명렁 프롬프트 또는 파워쉘 실행
+
+### 클러스터 시작 ###
+```
+PS C:\Users\User> minikube start
+```
+
+### 노드 확인 ###
+```
+PS C:\Users\User> kubectl get nodes
+NAME       STATUS   ROLES           AGE   VERSION
+minikube   Ready    control-plane   22s   v1.27.4
+```
+
+### Pods 확인 ###
+```
+PS C:\Users\User> kubectl get pods -A
+NAMESPACE     NAME                               READY   STATUS    RESTARTS      AGE
+kube-system   coredns-5d78c9869d-m69vs           1/1     Running   0             61s
+kube-system   etcd-minikube                      1/1     Running   0             73s
+kube-system   kube-apiserver-minikube            1/1     Running   0             76s
+kube-system   kube-controller-manager-minikube   1/1     Running   0             73s
+kube-system   kube-proxy-87llf                   1/1     Running   0             61s
+kube-system   kube-scheduler-minikube            1/1     Running   0             75s
+kube-system   storage-provisioner                1/1     Running   2 (60s ago)   72s
+```
