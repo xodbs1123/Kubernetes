@@ -435,7 +435,7 @@ C:\kubernetes>vagrant ssh master
 vagrant@master:~$
 ```
 
-### RSA 방식 암호화키 생성 (pw:vagrant) ###
+### RSA 방식 암호화키 생성 ###
 ```
 C:\kubernetes>vagrant ssh master
 vagrant@master:~$ ssh-keygen -t rsa
