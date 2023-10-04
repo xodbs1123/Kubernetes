@@ -727,17 +727,40 @@ root@master:/home/vagrant# kubectl get nodes -o JSON
 
 ## 쿠버네티스 리소스 ##
 ```
-node		                컨테이너를 배치하는 서버
-namespace	              쿠버네티스 클러스터 안의 가상 클러스터 
-pod		                  컨테이너 집합 중 가장 작은 단위로 컨테이너의 실행 방법을 정의
+node		        컨테이너를 배치하는 서버
+namespace	        쿠버네티스 클러스터 안의 가상 클러스터 
+pod		        컨테이너 집합 중 가장 작은 단위로 컨테이너의 실행 방법을 정의
 replicaset              같은 스펙을 갖는 파드를 여러 개 생성하고 관리하는 역할
 deployment              replicaset의 리비전을 관리
 service                 파드의 집합에 접근하기 위한 경로를 정의
 ingress                 서비스를 쿠버네티스 클러스트 외부로 노출
 configmap               설정 정보를 정의하고 피드에 전달
 secrete                 인증 정보와 같은 기밀 데이터를 정의
-persistentvolume		    파드가 사용할 스토리지의 크기 및 종류를 정의
-persistentvolumeclaim		퍼시스턴트 볼륨을 동적으로 확보
+persistentvolume	파드가 사용할 스토리지의 크기 및 종류를 정의
+persistentvolumeclaim	퍼시스턴트 볼륨을 동적으로 확보
 job                     상주 실행을 목적으로 하지 않는 파드를 여러 개 생성하고 정상적인 종료를 보장
 cronjob                 cron 문법으로 스케줄링되는 job
 ```
+## 오브젝트(object) ##
+- 오브젝트는 지정된 상태가 유지되도록 쿠버네티스에 의해 제어됨
+- 오브텍트는 spec과 status라는 필드를 가짐
+  - spec : 사용자가 기대하는 상태
+  - status : 기대되는 값에 대비한 현재의 상태
+- 오브젝트는 메타데이터에 기술된 이름에 의해 식별
+- 같은 종류의 오브젝트 이름은 하나의 네임스페이스에서 반드시 유일해야 함
+
+## 컨트롤러(Controller) ##
+- 파드의 실행을 제어하는 오브젝트
+- ReplicaSet, Deployment, Statefulset, DaemonSet 등
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/984d8477-a2d0-4723-b276-6003bc9aae00)
+
+## 리소스(오브젝트) 생성 방법 ##
+- kubectl run 또는 Expose => 생성형(generative) => 컨테이너가 원하는 대로 작동하는지 빠르게 확인할 경우 사용, 주로 개발 환경에서 많이 사용
+- kubectl create => 명령형(imperative) => 오브젝트의 버전 관리가 중요할 때 사용
+- kubectl apply => 선언형(declarative) => 오브젝트의 버전 관리가 중요할 때 사용
+
+## 파드(pods) ##
+https://kubernetes.io/docs/concepts/workloads/pods/
+- 컨테이너 애플리케이션의 기본 단위
+- **단일 목적**을 수행하기 위한 **한 개 이상의 컨테이너로 구성**된 컨테이너 집합
