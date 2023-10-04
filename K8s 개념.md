@@ -220,4 +220,70 @@ W1004 10:45:58.763280   12504 main.go:291] Unable to resolve the current Docker 
 * Verifying proxy health ...
 * Opening http://127.0.0.1:55372/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/ in your default browser...
 ```
+### helo-minikube 이름의 디플로이먼트 생성 ###
+```
+PS C:\Users\User> kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.4
+deployment.apps/hello-minikube created
+```
 
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/f9ddb802-c999-40f6-ae08-35589fe18331)
+
+
+### 클러스터 외부에서 파드로 접근 ###
+- **1. NodePort 타입의 서비스 생성 후 해당 포트로 포트 포워딩**
+```
+PS C:\Users\User> kubectl expose deployment hello-minikube --type=NodePort --port=8080
+service/hello-minikube exposed
+```
+```
+PS C:\Users\User> kubectl get service -o wide
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE   SELECTOR
+hello-minikube   NodePort    10.99.152.121   <none>        8080:30807/TCP   22s   app=hello-minikube
+kubernetes       ClusterIP   10.96.0.1       <none>        443/TCP          10m   <none>
+```
+```
+PS C:\Users\User> kubectl port-forward service/hello-minikube 9090:8080
+Forwarding from 127.0.0.1:9090 -> 8080
+Forwarding from [::1]:9090 -> 8080
+```
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/fdf12b33-b22b-40af-8446-0c3715c724e7)
+
+- **2. LoadBalancer 타입의 서비스 생성 후 minikube turnnel 실행**
+```
+PS C:\Users\User> kubectl create deployment balanced --image=k8s.gcr.io/echoserver:1.4
+deployment.apps/balanced created
+
+PS C:\Users\User> kubectl expose deployment balanced --type=LoadBalancer --port=8080
+service/balanced exposed
+```
+```
+PS C:\Users\User> minikube tunnel
+W1004 10:57:41.571393   15180 main.go:291] Unable to resolve the current Docker CLI context "default": context "default": context not found: open C:\Users\User\.docker\contexts\meta\37a8eec1ce19687d132fe29051dca629d164e2c4958ba141d5f4133a33f0688f\meta.json: The system cannot find the path specified.
+* Tunnel successfully started
+
+* NOTE: Please do not close this terminal as this process must stay alive for the tunnel to be accessible ...
+
+* balanced 서비스의 터널을 시작하는 중
+```
+- 로드 밸런서에 IP 할당 확인
+```
+PS C:\Users\User> kubectl get service
+NAME             TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+balanced         LoadBalancer   10.110.47.56    127.0.0.1     8080:30968/TCP   107s
+hello-minikube   NodePort       10.99.152.121   <none>        8080:30807/TCP   6m40s
+kubernetes       ClusterIP      10.96.0.1       <none>        443/TCP          16m
+```
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/c1dfb66e-c767-4def-8c5e-8b0c42333315)
+
+### 클러스터 삭제 ###
+```
+PS C:\Users\User> minikube delete
+W1004 10:59:25.137528    1360 main.go:291] Unable to resolve the current Docker CLI context "default": context "default": context not found: open C:\Users\User\.docker\contexts\meta\37a8eec1ce19687d132fe29051dca629d164e2c4958ba141d5f4133a33f0688f\meta.json: The system cannot find the path specified.
+* docker 의 "minikube" 를 삭제하는 중 ...
+```
+
+## Kubespray를 이용한 멀티 노드 쿠버네티스 클러스터 구성 ##
+https://myanjini.tistory.com/entry/Kubespray%EB%A5%BC-%ED%99%9C%EC%9A%A9%ED%95%9C-%EB%A9%80%ED%8B%B0-%EB%85%B8%EB%93%9C-%EC%BF%A0%EB%B2%84%EB%84%A4%ED%8B%B0%EC%8A%A4-%ED%81%B4%EB%9F%AC%EC%8A%A4%ED%84%B0-%EA%B5%AC%EC%84%B1
+
+- vagrant 설치
+https://www.vagrantup.com/
