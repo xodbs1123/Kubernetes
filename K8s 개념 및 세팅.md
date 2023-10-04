@@ -287,3 +287,306 @@ https://myanjini.tistory.com/entry/Kubespray%EB%A5%BC-%ED%99%9C%EC%9A%A9%ED%95%9
 
 - vagrant 설치
 https://www.vagrantup.com/
+
+### Kubespray ###
+- 앤서블(ansible)을 사용해 쿠버네티스 클러스터를 구축하는 도구
+
+### Vagrant ###
+- 가상화 환경을 구축하고 관리하기 위한 오픈 소스 도구
+- 가상 머신의 생성, 시작, 정지, 삭제 등의 작업을 CLI을 통해 간단하게 수행
+- 다양한 가상화 플랫폼을 지원(VirtualBox, Vmaware, Hyper-V, Docker 등)
+```
+vagrant init 		  Vagrantfile을 생성
+vagrant up		    Vagrantfile을 기반으로 프로비저닝을 진행
+vagrant halt		  가상머신을 종료
+vagrant destroy	  가상머신을 삭제
+vagrant ssh		    가상머신에 SSH 접속
+vagrant provision	가상머신의 설정을 변경하고 적용
+```
+
+### Vagrant file, config.yaml 생성 ###
+```
+C:\Users\User>cd \
+
+C:\>mkdir kubernetes
+
+C:\>cd kubernetes
+
+C:\kubernetes>code .
+
+C:\kubernetes>
+```
+
+```Vagrantfile
+require "yaml"  
+
+CONFIG = YAML.load_file(File.join(File.dirname(__FILE__), "config.yaml"))
+
+Vagrant.configure("2") do |config|
+  # Use the same SSH key for all machines
+  config.ssh.insert_key = false
+
+  # masters
+  CONFIG["masters"].each do |master|
+    config.vm.define master["name"] do |cfg|
+      cfg.vm.box = master["box"]
+      cfg.vm.network "private_network", ip: master["ip"], virtualbox_intnet: true
+      cfg.vm.hostname = master["hostname"]
+      
+      cfg.vm.provider "virtualbox" do |v|
+        v.memory = master["memory"]
+        v.cpus = master["cpu"]
+        v.name = master["name"]
+      end
+      cfg.vm.provision "shell", inline: <<-SCRIPT
+        sed -i -e "s/PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+        systemctl restart sshd
+      SCRIPT
+
+      # set timezone & disable swap memory, ufw & enable ip forwarding
+      cfg.vm.provision "shell", inline: <<-SCRIPT
+        sudo apt-get update
+        sudo timedatectl set-timezone "Asia/Seoul"
+        sudo swapoff -a
+        sudo sed -i "/swap/d" /etc/fstab
+        sudo systemctl stop ufw
+        sudo systemctl disable ufw
+        sudo sed -i "s/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
+        sudo sysctl -p
+      SCRIPT
+
+      # install python 
+      cfg.vm.provision "shell", inline: <<-SCRIPT
+        sudo apt install python3-pip python3-setuptools virtualenv -y
+      SCRIPT
+    end
+  end
+    
+  # worker nodes
+  CONFIG["workers"].each do |worker|
+    config.vm.define worker["name"] do |cfg|
+      cfg.vm.box = worker["box"]
+      cfg.vm.network "private_network", ip: worker["ip"], virtualbox_intnet: true
+      cfg.vm.hostname = worker["hostname"]
+      
+      cfg.vm.provider "virtualbox" do |v|
+        v.memory = worker["memory"]
+        v.cpus = worker["cpu"]
+        v.name = worker["name"]
+      end
+      cfg.vm.provision "shell", inline: <<-SCRIPT
+        sed -i -e "s/PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+        systemctl restart sshd
+      SCRIPT
+
+      # set timezone & disable swap memory & ufw & enable ip forwarding
+      cfg.vm.provision "shell", inline: <<-SCRIPT
+        sudo apt-get update
+        sudo timedatectl set-timezone "Asia/Seoul"
+        sudo swapoff -a
+        sudo sed -i "/swap/d" /etc/fstab
+        sudo systemctl stop ufw
+        sudo systemctl disable ufw
+        sudo sed -i "s/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
+        sudo sysctl -p
+      SCRIPT
+    end
+  end
+end
+```
+
+```yaml
+masters:
+  - name: master
+    box: generic/ubuntu2204
+    hostname: master
+    ip: 192.168.10.100
+    memory: 2048
+    cpu: 2
+  
+workers:
+  - name: worker-1
+    box: generic/ubuntu2204
+    hostname: worker-1
+    ip: 192.168.10.110
+    memory: 2048
+    cpu: 2
+
+  - name: worker-2
+    box: generic/ubuntu2204
+    hostname: worker-2
+    ip: 192.168.10.120
+    memory: 2048
+    cpu: 2
+```
+
+### virtualbox 세팅 ###
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/d6db0103-f883-4b45-a0a8-c25c1aac7587)
+
+### vagrant up ###
+```
+C:\kubernetes>vagrant up
+```
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/ef555ff9-05af-4210-937a-70df28392a62)
+
+### 마스터 노드에 SSH 접속 ###
+```
+C:\kubernetes>vagrant ssh master
+vagrant@master:~$
+```
+
+### RSA 방식 암호화키 생성 (pw:vagrant) ###
+```
+C:\kubernetes>vagrant ssh master
+vagrant@master:~$ ssh-keygen -t rsa
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/vagrant/.ssh/id_rsa):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /home/vagrant/.ssh/id_rsa
+Your public key has been saved in /home/vagrant/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:Aos98AhiDQZGI8XxkM1um6aTBVGmYCQjMoeX2zGdyTk vagrant@master
+The key's randomart image is:
++---[RSA 3072]----+
+|&%=Boo +         |
+|X=X== E          |
+|ooo*oo .         |
+|o.o*+o           |
+|  oo=o. S        |
+|    =. .         |
+|   =             |
+|  +              |
+|   .             |
++----[SHA256]-----+
+```
+
+### 키 생성 확인 ###
+```
+vagrant@master:~$ ls -al .ssh/
+total 20
+drwx------ 2 vagrant vagrant 4096 Oct  4 12:20 .
+drwxr-x--- 4 vagrant vagrant 4096 Sep 24 12:20 ..
+-rw------- 1 vagrant vagrant  409 Sep 24 12:20 authorized_keys
+-rw------- 1 vagrant vagrant 2655 Oct  4 12:20 id_rsa
+-rw-r--r-- 1 vagrant vagrant  568 Oct  4 12:20 id_rsa.pub
+```
+
+### 마스터 및 work 노드에 공개키 배포 ###
+```
+vagrant@master:~$ ssh-copy-id vagrant@192.168.10.100
+
+vagrant@master:~$ ssh-copy-id vagrant@192.168.10.110
+
+vagrant@master:~$ ssh-copy-id vagrant@192.168.10.120
+```
+
+### 스냅샷 생성 ( 많이 해놓으면 좋음 ) ###
+```
+C:\kubernetes>vagrant snapshot save 01-init-state
+==> master: Snapshotting the machine as '01-init-state'...
+==> master: Snapshot saved! You can restore the snapshot at any time by
+==> master: using `vagrant snapshot restore`. You can delete it using
+==> master: `vagrant snapshot delete`.
+==> worker-1: Snapshotting the machine as '01-init-state'...
+==> worker-1: Snapshot saved! You can restore the snapshot at any time by
+==> worker-1: using `vagrant snapshot restore`. You can delete it using
+==> worker-1: `vagrant snapshot delete`.
+==> worker-2: Snapshotting the machine as '01-init-state'...
+==> worker-2: Snapshot saved! You can restore the snapshot at any time by
+==> worker-2: using `vagrant snapshot restore`. You can delete it using
+==> worker-2: `vagrant snapshot delete`.
+```
+```
+C:\kubernetes>vagrant snapshot list
+==> master:
+01-init-state
+==> worker-1:
+01-init-state
+==> worker-2:
+01-init-state
+```
+
+### master 노드에 파이썬 가상환경 설치 ###
+```
+vagrant@master:~$ virtualenv --python=python3 venv
+created virtual environment CPython3.10.12.final.0-64 in 298ms
+  creator CPython3Posix(dest=/home/vagrant/venv, clear=False, no_vcs_ignore=False, global=False)
+  seeder FromAppData(download=False, pip=bundle, setuptools=bundle, wheel=bundle, via=copy, app_data_dir=/home/vagrant/.local/share/virtualenv)
+    added seed packages: pip==22.0.2, setuptools==59.6.0, wheel==0.37.1
+  activators BashActivator,CShellActivator,FishActivator,NushellActivator,PowerShellActivator,PythonActivator
+vagrant@master:~$ . venv/bin/activate
+```
+
+### kuberspray 설치 ###
+```
+(venv) vagrant@master:~$ git clone https://github.com/kubernetes-sigs/kubespray
+```
+```
+(venv) vagrant@master:~$ cd kubespray
+(venv) vagrant@master:~/kubespray$ pip install -r requirements.txt
+```
+
+### ansible 설치 확인 ###
+```
+(venv) vagrant@master:~/kubespray$ ansible --version
+ansible [core 2.14.10]
+  config file = /home/vagrant/kubespray/ansible.cfg
+  configured module search path = ['/home/vagrant/kubespray/library']
+  ansible python module location = /home/vagrant/venv/lib/python3.10/site-packages/ansible
+  ansible collection location = /home/vagrant/.ansible/collections:/usr/share/ansible/collections
+  executable location = /home/vagrant/venv/bin/ansible
+  python version = 3.10.12 (main, Jun 11 2023, 05:26:28) [GCC 11.4.0] (/home/vagrant/venv/bin/python)
+  jinja version = 3.1.2
+  libyaml = True
+```
+
+### master 노드에서 ansible 인벤토리 설정 ###
+```
+(venv) vagrant@master:~/kubespray$ cp -rfp inventory/sample inventory/mycluster
+(venv) vagrant@master:~/kubespray$ ls inventory/mycluster/
+group_vars  inventory.ini  patches
+```
+```
+(venv) vagrant@master:~/kubespray$ CONFIG_FILE=inventory/mycluster/hosts.yaml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+```
+```
+(venv) vagrant@master:~/kubespray$ vi inventory/mycluster/hosts.yaml
+
+all:
+  hosts:
+    master:
+      ansible_host: 192.168.10.100
+      ip: 192.168.10.100
+      access_ip: 192.168.10.100
+    worker1:
+      ansible_host: 192.168.10.110
+      ip: 192.168.10.110
+      access_ip: 192.168.10.110
+    worker2:
+      ansible_host: 192.168.10.120
+      ip: 192.168.10.120
+      access_ip: 192.168.10.120
+  children:
+    kube_control_plane:
+      hosts:
+        master:
+    kube_node:
+      hosts:
+        worker1:
+        worker2:
+    etcd:
+      hosts:
+        master:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}
+```
+```
+(venv) vagrant@master:~/kubespray$ ansible-playbook -i inventory/mycluster/hosts.yaml --become --become-user=root cluster.yml
+
+중간에 나오는 password 입력 (vagrant)
+```
