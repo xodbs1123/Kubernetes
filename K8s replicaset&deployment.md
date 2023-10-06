@@ -572,7 +572,6 @@ vagrant@master-node:~$
 vagrant@master-node:~$ kubectl set image deployments my-nginx-deployment nginx=docker.io/nginx:1.11 --record
 Flag --record has been deprecated, --record will be removed in the future
 deployment.apps/my-nginx-deployment image updated
-
 ```
 - 앞에서 생성한 파드는 종료, 삭제되었고 새롭게 추가된 파드로 변경됨
 - 새로 생성된 replicaset ID(595b6754f6)를 통해 확인 가능
