@@ -544,3 +544,49 @@ pod/web-deploy-59fbcf55f8-rpzsl   1/1     Running             0          4m38s  
 pod/web-deploy-59fbcf55f8-rz9jw   1/1     Running             0          2m      172.16.158.17   worker-node02   <none>           <none>
 pod/web-deploy-59fbcf55f8-zmnrl   1/1     Running             0          4m38s   172.16.87.203   worker-node01   <none>           <none>
 ```
+
+## 디플로이먼트를 사용하는 이유 2) 롤아웃, 롤백 ##
+- 애플리케이션을 업데이트할 때 레플리카셋의 변경 사항을 저장하는 **리비전(revision)을 남겨 롤백을 가능**하게 해주고, 무중단 서비스를 위해 **파드의 롤링 업데이터 전력을 지정**할 수 있음
+
+### --record 옵션을 추가해 디플로이먼트 생성 ###
+```
+vagrant@master-node:~$ kubectl apply -f deployment-nginx.yaml --record
+Flag --record has been deprecated, --record will be removed in the future
+deployment.apps/my-nginx-deployment created
+
+vagrant@master-node:~$ kubectl get deploy,rs,po -o wide
+NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES            SELECTOR
+deployment.apps/my-nginx-deployment   3/3     3            3           22s   nginx        docker.io/nginx   app=my-nginx
+
+NAME                                             DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES            SELECTOR
+replicaset.apps/my-nginx-deployment-66bcdb4565   3         3         3       22s   nginx        docker.io/nginx   app=my-nginx,pod-template-hash=66bcdb4565
+
+NAME                                       READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+pod/my-nginx-deployment-66bcdb4565-c6dh9   1/1     Running   0          22s   172.16.158.21   worker-node02   <none>           <none>
+pod/my-nginx-deployment-66bcdb4565-lvzxt   1/1     Running   0          22s   172.16.158.20   worker-node02   <none>           <none>
+pod/my-nginx-deployment-66bcdb4565-zrdrj   1/1     Running   0          22s   172.16.87.208   worker-node01   <none>           <none>
+vagrant@master-node:~$
+```
+### kubectl set image 명령으로 파드의 이미지를 변경 ###
+```
+vagrant@master-node:~$ kubectl set image deployments my-nginx-deployment nginx=docker.io/nginx:1.11 --record
+Flag --record has been deprecated, --record will be removed in the future
+deployment.apps/my-nginx-deployment image updated
+
+```
+- 앞에서 생성한 파드는 종료, 삭제되었고 새롭게 추가된 파드로 변경됨
+- 새로 생성된 replicaset ID(595b6754f6)를 통해 확인 가능
+```
+vagrant@master-node:~$ kubectl get deploy,rs,po -o wide
+NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES                 SELECTOR
+deployment.apps/my-nginx-deployment   3/3     3            3           5m13s   nginx        docker.io/nginx:1.11   app=my-nginx
+
+NAME                                             DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES                 SELECTOR
+replicaset.apps/my-nginx-deployment-595b6754f6   3         3         3       2m46s   nginx        docker.io/nginx:1.11   app=my-nginx,pod-template-hash=595b6754f6
+replicaset.apps/my-nginx-deployment-66bcdb4565   0         0         0       5m13s   nginx        docker.io/nginx        app=my-nginx,pod-template-hash=66bcdb4565
+
+NAME                                       READY   STATUS    RESTARTS   AGE     IP              NODE            NOMINATED NODE   READINESS GATES
+pod/my-nginx-deployment-595b6754f6-6crcc   1/1     Running   0          2m28s   172.16.87.209   worker-node01   <none>           <none>
+pod/my-nginx-deployment-595b6754f6-89bk7   1/1     Running   0          2m11s   172.16.158.23   worker-node02   <none>           <none>
+pod/my-nginx-deployment-595b6754f6-dr47v   1/1     Running   0          2m46s   172.16.158.22   worker-node02   <none>           <none>
+```
