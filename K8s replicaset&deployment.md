@@ -589,3 +589,116 @@ pod/my-nginx-deployment-595b6754f6-6crcc   1/1     Running   0          2m28s   
 pod/my-nginx-deployment-595b6754f6-89bk7   1/1     Running   0          2m11s   172.16.158.23   worker-node02   <none>           <none>
 pod/my-nginx-deployment-595b6754f6-dr47v   1/1     Running   0          2m46s   172.16.158.22   worker-node02   <none>           <none>
 ```
+### 리비전 정보 확인 ###
+- --record=true 옵션으로 디플로이먼트를 변경하면 변경 사항을 기록하여 해당 버전의 레플리카셋을 보존할 수 있음
+```
+vagrant@master-node:~$ kubectl rollout history deployment my-nginx-deployment
+deployment.apps/my-nginx-deployment
+REVISION  CHANGE-CAUSE
+1         kubectl apply --filename=deployment-nginx.yaml --record=true
+2         kubectl set image deployments my-nginx-deployment nginx=docker.io/nginx:1.11 --record=true
+```
+
+### 이전 버전의 레플리카셋으로 롤백 ###
+```
+vagrant@master-node:~$ kubectl rollout undo deployment my-nginx-deployment --to-revision=1
+deployment.apps/my-nginx-deployment rolled back
+
+vagrant@master-node:~$ kubectl get rs,pod
+NAME                                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-nginx-deployment-595b6754f6   0         0         0       3d17h
+replicaset.apps/my-nginx-deployment-66bcdb4565   3         3         3       3d17h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/my-nginx-deployment-66bcdb4565-g42pg   1/1     Running   0          23s
+pod/my-nginx-deployment-66bcdb4565-j6667   1/1     Running   0          26s
+pod/my-nginx-deployment-66bcdb4565-lq95j   1/1     Running   0          18s
+```
+```
+vagrant@master-node:~$ kubectl rollout history deployment my-nginx-deployment
+deployment.apps/my-nginx-deployment
+REVISION  CHANGE-CAUSE
+2         kubectl set image deployments my-nginx-deployment nginx=docker.io/nginx:1.11 --record=true
+3         kubectl apply --filename=deployment-nginx.yaml --record=true
+```
+
+### 디플로이먼트 상세 정보 출력 ###
+```
+vagrant@master-node:~$ kubectl describe deployment my-nginx-deployment
+Name:                   my-nginx-deployment
+Namespace:              default
+CreationTimestamp:      Fri, 06 Oct 2023 06:43:53 +0000
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 3        <= 버전 정보 확인 가능
+                        kubernetes.io/change-cause: kubectl apply --filename=deployment-nginx.yaml --record=true
+Selector:               app=my-nginx
+Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=my-nginx
+  Containers:
+   nginx:
+    Image:        docker.io/nginx
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  my-nginx-deployment-595b6754f6 (0/0 replicas created)
+NewReplicaSet:   my-nginx-deployment-66bcdb4565 (3/3 replicas created)
+Events:
+```
+
+### 스케일 변경 및 롤백 ###
+```
+vagrant@master-node:~$ kubectl scale --replicas=10 deployment my-nginx-deployment --record=true
+Flag --record has been deprecated, --record will be removed in the future
+deployment.apps/my-nginx-deployment scaled
+
+vagrant@master-node:~$ kubectl get all
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/my-nginx-deployment-66bcdb4565-2vrr2   1/1     Running   0          17s
+pod/my-nginx-deployment-66bcdb4565-4gcvk   1/1     Running   0          17s
+pod/my-nginx-deployment-66bcdb4565-bn6b2   1/1     Running   0          17s
+pod/my-nginx-deployment-66bcdb4565-fbfsv   1/1     Running   0          17s
+pod/my-nginx-deployment-66bcdb4565-g42pg   1/1     Running   0          7m53s
+pod/my-nginx-deployment-66bcdb4565-j6667   1/1     Running   0          7m56s
+pod/my-nginx-deployment-66bcdb4565-lq95j   1/1     Running   0          7m48s
+pod/my-nginx-deployment-66bcdb4565-ngdbr   1/1     Running   0          17s
+pod/my-nginx-deployment-66bcdb4565-pd4xc   1/1     Running   0          17s
+pod/my-nginx-deployment-66bcdb4565-xz7j8   1/1     Running   0          17s
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   172.17.0.1   <none>        443/TCP   4d14h
+
+NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/my-nginx-deployment   10/10   10           10          3d17h
+
+NAME                                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-nginx-deployment-595b6754f6   0         0         0       3d17h
+replicaset.apps/my-nginx-deployment-66bcdb4565   10        10        10      3d17h  <= 스케일 변갱해도 레플리카셋은 그대로 유지
+```
+### 모든 리소스 삭제 ###
+```
+vagrant@master-node:~$ kubectl delete deployment,rs,pod --all
+deployment.apps "my-nginx-deployment" deleted
+replicaset.apps "my-nginx-deployment-595b6754f6" deleted
+replicaset.apps "my-nginx-deployment-66bcdb4565" deleted
+pod "my-nginx-deployment-66bcdb4565-2vrr2" deleted
+pod "my-nginx-deployment-66bcdb4565-4gcvk" deleted
+pod "my-nginx-deployment-66bcdb4565-bn6b2" deleted
+pod "my-nginx-deployment-66bcdb4565-fbfsv" deleted
+pod "my-nginx-deployment-66bcdb4565-g42pg" deleted
+pod "my-nginx-deployment-66bcdb4565-j6667" deleted
+pod "my-nginx-deployment-66bcdb4565-lq95j" deleted
+pod "my-nginx-deployment-66bcdb4565-ngdbr" deleted
+pod "my-nginx-deployment-66bcdb4565-pd4xc" deleted
+pod "my-nginx-deployment-66bcdb4565-xz7j8" deleted
+```
