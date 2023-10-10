@@ -702,3 +702,320 @@ pod "my-nginx-deployment-66bcdb4565-ngdbr" deleted
 pod "my-nginx-deployment-66bcdb4565-pd4xc" deleted
 pod "my-nginx-deployment-66bcdb4565-xz7j8" deleted
 ```
+
+## 디플로이먼트를 사용하는 이유 3) 자동 복구 ##
+- 파드 내의 컨테이너가 종료되는 경우, 파드는 컨테이너 수준의 장애에 대해 자동 복구를 시도하고, 디플로이먼트는 파드 단위로 복구를 시도
+
+### 30초 단위로 재기동하는 파드 정의 ###
+- /home/vagrant/restart-pod.yaml 작성
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test1
+spec:
+  containers:
+  - name: busybox
+    image: docker.io/busybox:1
+    command: ["sh", "-c", "sleep 30; exit 0"]
+  restartPolicy: Always
+  imagePullSecrets:
+  - name: regcred
+```
+### 동일 사양의 파드를 4개 가동하는 드플로이먼트 정의 ###
+- /home/vagrant/restart-deployment.yaml 작성
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test2
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: test2
+  template:
+    metadata:
+      labels:
+        app: test2
+    spec:
+      containers:
+      - name: busybox
+        image: docker.io/busybox:1
+        command: ["sh", "-c", "sleep 30; exit 0"]
+      imagePullSecrets:
+      - name: regcred
+```
+
+### 파드와 디플로이먼트를 각각 배포 ###
+```
+vagrant@master-node:~$ kubectl apply -f restart-pod.yaml
+pod/test1 created
+
+vagrant@master-node:~$ kubectl apply -f restart-deployment.yaml
+deployment.apps/test2 created
+```
+
+### 노드 및 파드 동작 확인 ###
+```
+vagrant@master-node:~$ kubectl get node,pod -o wide
+NAME                 STATUS   ROLES           AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+node/master-node     Ready    control-plane   4d15h   v1.27.1   10.0.0.10     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+node/worker-node01   Ready    worker          4d15h   v1.27.1   10.0.0.11     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+node/worker-node02   Ready    worker          4d15h   v1.27.1   10.0.0.12     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+
+NAME                        READY   STATUS      RESTARTS      AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+pod/test1                   0/1     Completed   1 (39s ago)   76s   172.16.158.31   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-bjnn4   0/1     Completed   0             32s   172.16.158.33   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-frhjg   0/1     Completed   0             32s   172.16.158.32   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-rdsz2   1/1     Running     0             32s   172.16.87.217   worker-node01   <none>           <none>
+pod/test2-958d4f5c4-xgh48   1/1     Running     0             32s   172.16.87.216   worker-node01   <none>           <none>
+```
+```
+vagrant@master-node:~$ kubectl get node,pod -o wide
+NAME                 STATUS   ROLES           AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+node/master-node     Ready    control-plane   4d15h   v1.27.1   10.0.0.10     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+node/worker-node01   Ready    worker          4d15h   v1.27.1   10.0.0.11     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+node/worker-node02   Ready    worker          4d15h   v1.27.1   10.0.0.12     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+
+NAME                        READY   STATUS      RESTARTS      AGE    IP              NODE            NOMINATED NODE   READINESS GATES
+pod/test1                   0/1     Completed   2 (49s ago)   116s   172.16.158.31   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-bjnn4   0/1     Completed   1 (41s ago)   72s    172.16.158.33   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-frhjg   0/1     Completed   1 (41s ago)   72s    172.16.158.32   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-rdsz2   0/1     Completed   1 (34s ago)   72s    172.16.87.217   worker-node01   <none>           <none>
+pod/test2-958d4f5c4-xgh48   0/1     Completed   1 (36s ago)   72s    172.16.87.216   worker-node01   <none>           <none>
+```
+```
+vagrant@master-node:~$ kubectl get node,pod -o wide
+NAME                 STATUS   ROLES           AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+node/master-node     Ready    control-plane   4d15h   v1.27.1   10.0.0.10     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+node/worker-node01   Ready    worker          4d15h   v1.27.1   10.0.0.11     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+node/worker-node02   Ready    worker          4d15h   v1.27.1   10.0.0.12     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+
+NAME                        READY   STATUS    RESTARTS      AGE     IP              NODE            NOMINATED NODE   READINESS GATES
+pod/test1                   1/1     Running   3 (31s ago)   2m22s   172.16.158.31   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-bjnn4   1/1     Running   2 (37s ago)   98s     172.16.158.33   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-frhjg   1/1     Running   2 (37s ago)   98s     172.16.158.32   worker-node02   <none>           <none>
+pod/test2-958d4f5c4-rdsz2   1/1     Running   2 (30s ago)   98s     172.16.87.217   worker-node01   <none>           <none>
+pod/test2-958d4f5c4-xgh48   1/1     Running   2 (32s ago)   98s     172.16.87.216   worker-node01   <none>           <none>
+```
+
+### 단독으로 기동한 test1 파드가 배포된 노드를 정지 (test1 Running 상태에서) ###
+```
+C:\Users\User>cd c:\kubernetes\vagrant-kubeadm-kubernetes
+
+c:\kubernetes\vagrant-kubeadm-kubernetes>vagrant halt node02
+```
+### 노드 및 파드 동작을 확인 ###
+```
+vagrant@master-node:~$ kubectl get node
+NAME            STATUS     ROLES           AGE     VERSION
+master-node     Ready      control-plane   4d15h   v1.27.1
+worker-node01   Ready      worker          4d15h   v1.27.1
+worker-node02   NotReady   worker          4d15h   v1.27.1
+```
+```
+vagrant@master-node:~$ kubectl get pod -o wide
+NAME                    READY   STATUS             RESTARTS        AGE     IP              NODE            NOMINATED NODE   READINESS GATES
+test1                   0/1     Completed          5 (3m32s ago)   7m47s   172.16.158.50   worker-node02   <none>           <none>
+test2-958d4f5c4-5p5v2   1/1     Running            5 (3m ago)      7m5s    172.16.158.51   worker-node02   <none>           <none>
+test2-958d4f5c4-67fr6   0/1     CrashLoopBackOff   5 (63s ago)     7m5s    172.16.87.220   worker-node01   <none>           <none>
+test2-958d4f5c4-hwzxv   0/1     CrashLoopBackOff   5 (64s ago)     7m5s    172.16.87.219   worker-node01   <none>           <none>
+test2-958d4f5c4-pxj8j   1/1     Running            5 (3m7s ago)    7m5s    172.16.158.52   worker-node02   <none>  
+```
+- 노드 종료 후 6분 정도 경과하면 디플로이먼트로 배포한 test2는 활성화 노드에 대체 파드를 생성하는 반면, 단독으로 기동한 test1은 원래 노드에 위치하는 것을 확인할 수 있음
+- 변경사항 확인 => kubectl get pod -o wide --watch
+```
+vagrant@master-node:~$ kubectl get pod -o wide
+NAME                    READY   STATUS             RESTARTS      AGE     IP              NODE            NOMINATED NODE   READINESS GATES
+test1                   1/1     Terminating        5 (12m ago)   17m     172.16.158.31   worker-node02   <none>           <none>
+test2-958d4f5c4-bjnn4   0/1     Terminating        4 (12m ago)   16m     172.16.158.33   worker-node02   <none>           <none>
+test2-958d4f5c4-cjhd4   0/1     CrashLoopBackOff   4 (88s ago)   5m29s   172.16.87.219   worker-node01   <none>           <none>
+test2-958d4f5c4-frhjg   0/1     Terminating        4 (12m ago)   16m     172.16.158.32   worker-node02   <none>           <none>
+test2-958d4f5c4-rdsz2   0/1     CrashLoopBackOff   7 (80s ago)   16m     172.16.87.217   worker-node01   <none>           <none>
+test2-958d4f5c4-xgh48   0/1     CrashLoopBackOff   7 (88s ago)   16m     172.16.87.216   worker-node01   <none>           <none>
+test2-958d4f5c4-z58bb   0/1     CrashLoopBackOff   4 (87s ago)   5m29s   172.16.87.218   worker-node01   <none>           <none>
+```
+```
+vagrant@master-node:~$ kubectl get pod -o wide
+NAME                    READY   STATUS             RESTARTS        AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+test1                   1/1     Terminating        5 (22m ago)     26m   172.16.158.31   worker-node02   <none>           <none>
+test2-958d4f5c4-bjnn4   0/1     Terminating        4 (21m ago)     25m   172.16.158.33   worker-node02   <none>           <none>
+test2-958d4f5c4-cjhd4   1/1     Running            7 (5m28s ago)   14m   172.16.87.219   worker-node01   <none>           <none>
+test2-958d4f5c4-frhjg   0/1     Terminating        4 (21m ago)     25m   172.16.158.32   worker-node02   <none>           <none>
+test2-958d4f5c4-rdsz2   0/1     CrashLoopBackOff   8 (5m8s ago)    25m   172.16.87.217   worker-node01   <none>           <none>
+test2-958d4f5c4-xgh48   1/1     Running            9 (5m13s ago)   25m   172.16.87.216   worker-node01   <none>           <none>
+test2-958d4f5c4-z58bb   0/1     Completed          7 (5m35s ago)   14m   172.16.87.218   worker-node01   <none>           <none>
+```
+### 노드 재기동 후 노드 및 파드 동작 확인 ###
+- c:\kubernetes\vagrant-kubeadm-kubernetes>vagrant up node02
+- 중지되었던 노드가 복원되면, Terminating 상태였던 파드가 모두 제거되는 것을 확인
+- 노드와의 통신이 회복되어 상태가 불분명했던 파드의 상태가 확인되어 삭제되는 것으로 단독으로 기동한 파드는 완전히 소멸됨
+- 일시적인 장애로 자동 복구가 발동되었을 때 더 불안한 상태로 빠지는 것을 막기 위해서, 디플로이먼트는 천천히 복구를 수행하도록 만들어짐
+```
+vagrant@master-node:~$ kubectl get node
+NAME            STATUS   ROLES           AGE     VERSION
+master-node     Ready    control-plane   4d15h   v1.27.1
+worker-node01   Ready    worker          4d15h   v1.27.1
+worker-node02   Ready    worker          4d15h   v1.27.1
+
+vagrant@master-node:~$ kubectl get pod -o wide
+NAME                    READY   STATUS             RESTARTS        AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+test2-958d4f5c4-cjhd4   0/1     CrashLoopBackOff   8 (2m11s ago)   22m   172.16.87.219   worker-node01   <none>           <none>
+test2-958d4f5c4-rdsz2   0/1     CrashLoopBackOff   10 (98s ago)    33m   172.16.87.217   worker-node01   <none>           <none>
+test2-958d4f5c4-xgh48   0/1     CrashLoopBackOff   10 (113s ago)   33m   172.16.87.216   worker-node01   <none>           <none>
+test2-958d4f5c4-z58bb   0/1     CrashLoopBackOff   8 (2m13s ago)   22m   172.16.87.218   worker-node01   <none>           <none>
+```
+
+## 디플로이먼트 배포 전략 ##
+https://dev.classmethod.jp/articles/ci-cd-deployment-strategies-kr/
+
+### Recreate (재생성) ###
+- /home/vagrant/sample-deployment-recreate.yaml 작성
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/8c3720d1-6c15-4dd5-9558-260990864670)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: sample-deployment-recreate
+spec:
+  strategy:
+    type: Recreate              <= 기존 레플리카셋의 레플라 수를 0으로 하고 리소스를 반환
+  replicas: 3                      신규 레플리카셋을 생성하고 레플리카 수를 늘림
+  selector:
+    matchLabels:
+      app: sample-app
+  template: 
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      containers:
+        - name: nginx-container
+          image: docker.io/nginx:1.16
+      imagePullSecrets:
+       - name: regcred
+```
+```
+vagrant@master-node:~$ kubectl apply -f sample-deployment-recreate.yaml
+deployment.apps/sample-deployment-recreate created
+```
+```
+vagrant@master-node:~$ kubectl get rs,pod
+NAME                                                   DESIRED   CURRENT   READY   AGE
+replicaset.apps/sample-deployment-recreate-9ff76c956   3         3         3       87s
+
+NAME                                             READY   STATUS    RESTARTS   AGE
+pod/sample-deployment-recreate-9ff76c956-2hkdp   1/1     Running   0          87s
+pod/sample-deployment-recreate-9ff76c956-9b5t9   1/1     Running   0          87s
+pod/sample-deployment-recreate-9ff76c956-flx96   1/1     Running   0          87s
+```
+- 리소스 변경 전 상태 확인
+```
+vagrant@master-node:~$ kubectl get rs --watch
+NAME                                   DESIRED   CURRENT   READY   AGE
+sample-deployment-recreate-9ff76c956   3         3         3       2m18s
+```
+- 컨테이너 이미지 업데이트 후 리소스 상태 확인
+```
+vagrant@master-node:~$ kubectl set image deployment sample-deployment-recreate nginx-container=nginx:1.17
+deployment.apps/sample-deployment-recreate image updated
+```
+```
+vagrant@master-node:~$ kubectl get rs --watch
+NAME                                   DESIRED   CURRENT   READY   AGE
+sample-deployment-recreate-9ff76c956   3         3         3       2m18s
+sample-deployment-recreate-9ff76c956   0         3         3       4m11s
+sample-deployment-recreate-9ff76c956   0         3         3       4m11s
+sample-deployment-recreate-9ff76c956   0         0         0       4m12s    <= 첫 번째 RS를 종료
+sample-deployment-recreate-77dc8d9fb   3         0         0       0s       <= 새로운 RS를 생성
+sample-deployment-recreate-77dc8d9fb   3         0         0       0s
+sample-deployment-recreate-77dc8d9fb   3         3         0       0s
+sample-deployment-recreate-77dc8d9fb   3         3         1       16s
+sample-deployment-recreate-77dc8d9fb   3         3         2       25s
+sample-deployment-recreate-77dc8d9fb   3         3         3       27s      <= 새로운 RS를 서비스
+```
+### RollingUpdate ###
+- 배포전략을 따로 지정하지 않으면 디폴트로 적용
+- /home/vagrant/sample-deployment-rollingupdate.yaml 작성
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-dployment-rollingupdate
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavaliable: 0      <= 업데이트 중 동시에 정지 가능한 최대 파드 수
+      maxSurge: 1            <= 업데이트 중 동시에 생성할 수 있는 최대 파드 수
+    replicas: 3                  maxUnavaliable과 maxSurge를 모두 0으로 설정할 수는 없음
+    selector:
+      matchlabels:
+        app: sample-app
+    template:
+      metadata:
+        labels:
+          app: sample-app
+      spec:
+        containers:
+          - name: nginx-container
+            image: docker.io/nginx:1.16
+        imagePullSecrets:
+       - name: regcred    
+```
+```
+vagrant@master-node:~$ kubectl apply -f sample-deployment-rollingupdate.yaml
+deployment.apps/sample-deployment-rollingupdate created
+
+vagrant@master-node:~$ kubectl get rs,pod
+NAME                                                        DESIRED   CURRENT   READY   AGE
+replicaset.apps/sample-deployment-rollingupdate-9ff76c956   3         3         3       8s
+
+NAME                                                  READY   STATUS    RESTARTS   AGE
+pod/sample-deployment-rollingupdate-9ff76c956-4zmsc   1/1     Running   0          8s
+pod/sample-deployment-rollingupdate-9ff76c956-rjvd4   1/1     Running   0          8s
+pod/sample-deployment-rollingupdate-9ff76c956-zspdb   1/1     Running   0          8s
+```
+- watch 명령어로 상태 모니터링
+```
+vagrant@master-node:~$ kubectl get rs --watch
+NAME                                        DESIRED   CURRENT   READY   AGE
+sample-deployment-rollingupdate-9ff76c956   3         3         3       45s
+```
+- 이미지 업데이트
+```
+vagrant@master-node:~$ kubectl set image deployment sample-deployment-rollingupdate nginx-container=nginx:1.17
+deployment.apps/sample-deployment-rollingupdate image updated
+```
+- watch 명령어로 리소스 변경 상태 모니터링
+```
+vagrant@master-node:~$ kubectl get rs --watch
+NAME                                        DESIRED   CURRENT   READY   AGE
+sample-deployment-rollingupdate-9ff76c956   3         3         3       45s
+sample-deployment-rollingupdate-77dc8d9fb   1         0         0       0s
+sample-deployment-rollingupdate-77dc8d9fb   1         0         0       0s
+sample-deployment-rollingupdate-77dc8d9fb   1         1         0       0s
+sample-deployment-rollingupdate-77dc8d9fb   1         1         1       0s
+sample-deployment-rollingupdate-9ff76c956   2         3         3       87s
+sample-deployment-rollingupdate-77dc8d9fb   2         1         1       0s
+sample-deployment-rollingupdate-9ff76c956   2         3         3       87s
+sample-deployment-rollingupdate-9ff76c956   2         2         2       87s
+sample-deployment-rollingupdate-77dc8d9fb   2         1         1       1s
+sample-deployment-rollingupdate-77dc8d9fb   2         2         1       1s
+sample-deployment-rollingupdate-77dc8d9fb   2         2         2       1s
+sample-deployment-rollingupdate-9ff76c956   1         2         2       88s
+sample-deployment-rollingupdate-77dc8d9fb   3         2         2       1s
+sample-deployment-rollingupdate-9ff76c956   1         2         2       88s
+sample-deployment-rollingupdate-77dc8d9fb   3         2         2       1s
+sample-deployment-rollingupdate-9ff76c956   1         1         1       88s
+sample-deployment-rollingupdate-77dc8d9fb   3         3         2       1s
+sample-deployment-rollingupdate-77dc8d9fb   3         3         3       2s
+sample-deployment-rollingupdate-9ff76c956   0         1         1       89s
+sample-deployment-rollingupdate-9ff76c956   0         1         1       89s
+sample-deployment-rollingupdate-9ff76c956   0         0         0       89s
+```
+### Blue/Green ###
+### Canary ###
