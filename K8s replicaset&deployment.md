@@ -1021,6 +1021,9 @@ sample-deployment-rollingupdate-9ff76c956   0         1         1       89s
 sample-deployment-rollingupdate-9ff76c956   0         0         0       89s
 ```
 - sample-deployment-rollingupdate.yaml 파일에서 maxUnavailable=1, maxSurge=0으로 설정한 상태에서 위와 동일한 방법으로 rollingupdate 수행
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/80fb9fd0-c83f-49dc-a3ab-b0fef0f8f241)
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -1030,8 +1033,8 @@ spec:
   strategy:
     type: RollingUpdate			
     rollingUpdate:				
-      maxUnavailable: 1			
-      maxSurge: 0				
+      maxUnavailable: 1			<<< 0 -> 1
+      maxSurge: 0				    <<< 1 -> 0
   replicas: 3				    
   selector:
     matchLabels:
@@ -1075,6 +1078,10 @@ sample-deployment-rollingupdate-9ff76c956   0         0         0       51s
 sample-deployment-rollingupdate-77dc8d9fb   3         3         2       2s
 sample-deployment-rollingupdate-77dc8d9fb   3         3         3       3s
 ```
+## 서비스 학습 후 아래 실습 ##
+https://auth0.com/blog/deployment-strategies-in-kubernetes/
+
 ### Blue/Green ###
+
 
 ### Canary ###
