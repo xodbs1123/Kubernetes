@@ -508,3 +508,119 @@ If you don't see a command prompt, try pressing enter.
         <p>Hello,  hostname-deployment-7d4f978855-rn68f</p>     </blockquote>
         <p>Hello,  hostname-deployment-7d4f978855-rn68f</p>     </blockquote>
 ```
+## NodePort 타입의 서비스 ##
+- 모든 노드의 특정 포트를 개방해 서비스에 접근하는 방식
+- 노드의 IP 주소에 공개 포트를 오픈 -> 클러스터 외부에서 클러스터 내부의 파드로 요청을 전달하는 것이 가능
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/e92d132d-1c1d-4a62-b178-d903c37199b7)
+
+### 디플로이먼트 생성 ###
+- /home/vagrant/hostname-deployment.yaml 그대로 사용
+```
+vagrant@master-node:~$ kubectl apply -f hostname-deployment.yaml
+deployment.apps/hostname-deployment created
+
+vagrant@master-node:~$ kubectl get deployment
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+hostname-deployment   3/3     3            3           19s
+```
+
+### 서비스 정의 ###
+- /home/vagrant/hostname-service-nodeport.yaml 작성
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostname-service-nodeport
+spec:
+  type: NodePort
+  ports:
+  - name: web-port
+    port: 8080
+    targetPort: 80
+  selector:
+    app: webserver
+```
+
+### 서비스 생성 및 확인 ###
+```
+vagrant@master-node:~$ kubectl apply -f hostname-service-nodeport.yaml
+service/hostname-service-nodeport created
+
+vagrant@master-node:~$ kubectl get service
+NAME                        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hostname-service-nodeport   NodePort    172.17.28.103   <none>        8080:31014/TCP   7s
+                                                                      ~~ 공개포트 ~~
+kubernetes                  ClusterIP   172.17.0.1      <none>        443/TCP          4d22h
+```
+### 클러스터 내에서 모든 노드의 INTERNAL-IP 또는 EXTERNAL-IP와 노드 공개 포트로 접근이 가능한지 확인 ###
+```
+vagrant@master-node:~$ kubectl get node -o wide
+NAME            STATUS   ROLES           AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+master-node     Ready    control-plane   4d22h   v1.27.1   10.0.0.10     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+worker-node01   Ready    worker          4d22h   v1.27.1   10.0.0.11     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+worker-node02   Ready    worker          4d22h   v1.27.1   10.0.0.12     <none>        Ubuntu 22.04.3 LTS   5.15.0-83-generic   cri-o://1.27.1
+
+vagrant@master-node:~$ kubectl get pod -o wide
+NAME                                   READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+hostname-deployment-7d4f978855-42l6k   1/1     Running   0          10m   172.16.87.233   worker-node01   <none>           <none>
+hostname-deployment-7d4f978855-rgpgt   1/1     Running   0          10m   172.16.158.56   worker-node02   <none>           <none>
+hostname-deployment-7d4f978855-v6frq   1/1     Running   0          10m   172.16.158.57   worker-node02   <none>           <none>
+```
+
+### master 노드의 공개 포트로 요청을 전달 ###
+```
+vagrant@master-node:~$ wget -q -O - http://10.0.0.10:31014 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-rgpgt</p>     </blockquote>
+vagrant@master-node:~$ wget -q -O - http://10.0.0.10:31014 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-42l6k</p>     </blockquote>
+vagrant@master-node:~$ wget -q -O - http://10.0.0.10:31014 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-v6frq</p>     </blockquote>
+```
+
+### node01 노드의 공개 포트로 요청을 전달 ###
+```
+vagrant@master-node:~$ wget -q -O - http://10.0.0.11:31014 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-42l6k</p>     </blockquote>
+vagrant@master-node:~$ wget -q -O - http://10.0.0.11:31014 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-rgpgt</p>     </blockquote>
+vagrant@master-node:~$ wget -q -O - http://10.0.0.11:31014 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-v6frq</p>     </blockquote>
+```
+
+### 클러스터 내에서 서비스의 서비스 이름 또는 CLUSTER-IP와 ClusterIP 서비스 포트를 이용한 접근도 가능 ###
+- NodePort 타입의 서비스가 ClusterIP 타입의 서비스 기능을 포함하고 있으므로 클러스터에서 서비스의 내부 IP와 DNS 이름을 용한 접근이 가능 
+```
+vagrant@master-node:~$ kubectl get service
+NAME                        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hostname-service-nodeport   NodePort    172.17.28.103   <none>        8080:31014/TCP   14m
+kubernetes                  ClusterIP   172.17.0.1      <none>        443/TCP          4d22h
+```
+```
+vagrant@master-node:~$ wget -q -O - http://172.17.28.103:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-v6frq</p>     </blockquote>
+vagrant@master-node:~$ wget -q -O - http://172.17.28.103:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-rgpgt</p>     </blockquote>
+vagrant@master-node:~$ wget -q -O - http://172.17.28.103:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-42l6k</p>     </blockquote>
+```
+```
+/ # wget -q -O - http://172.17.28.103:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-42l6k</p>     </blockquote>
+/ # wget -q -O - http://172.17.28.103:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-v6frq</p>     </blockquote>
+/ # wget -q -O - http://172.17.28.103:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-42l6k</p>     </blockquote>
+/ #
+/ # wget -q -O - http://hostname-service-nodeport:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-42l6k</p>     </blockquote>
+/ # wget -q -O - http://hostname-service-nodeport:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-rgpgt</p>     </blockquote>
+/ # wget -q -O - http://hostname-service-nodeport:8080 | grep Hello
+        <p>Hello,  hostname-deployment-7d4f978855-rgpgt</p>     </blockquote>
+```
+
+### 호스트 PC의 웹 브라우저를 이용한 접근도 가능 ###
+
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/aefe748e-c444-4e6d-84c6-7794c8572e4c)
