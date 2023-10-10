@@ -939,6 +939,9 @@ sample-deployment-recreate-77dc8d9fb   3         3         3       27s      <= �
 ```
 ### RollingUpdate ###
 - 배포전략을 따로 지정하지 않으면 디폴트로 적용
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/8c08167b-5f69-486a-908c-26e88de0081f)
+
 - /home/vagrant/sample-deployment-rollingupdate.yaml 작성
 ```yaml
 apiVersion: apps/v1
@@ -994,11 +997,11 @@ deployment.apps/sample-deployment-rollingupdate image updated
 ```
 vagrant@master-node:~$ kubectl get rs --watch
 NAME                                        DESIRED   CURRENT   READY   AGE
-sample-deployment-rollingupdate-9ff76c956   3         3         3       45s
-sample-deployment-rollingupdate-77dc8d9fb   1         0         0       0s
+sample-deployment-rollingupdate-9ff76c956   3         3         3       45s  
+sample-deployment-rollingupdate-77dc8d9fb   1         0         0       0s   
 sample-deployment-rollingupdate-77dc8d9fb   1         0         0       0s
 sample-deployment-rollingupdate-77dc8d9fb   1         1         0       0s
-sample-deployment-rollingupdate-77dc8d9fb   1         1         1       0s
+sample-deployment-rollingupdate-77dc8d9fb   1         1         1       0s   
 sample-deployment-rollingupdate-9ff76c956   2         3         3       87s
 sample-deployment-rollingupdate-77dc8d9fb   2         1         1       0s
 sample-deployment-rollingupdate-9ff76c956   2         3         3       87s
@@ -1017,5 +1020,61 @@ sample-deployment-rollingupdate-9ff76c956   0         1         1       89s
 sample-deployment-rollingupdate-9ff76c956   0         1         1       89s
 sample-deployment-rollingupdate-9ff76c956   0         0         0       89s
 ```
+- sample-deployment-rollingupdate.yaml 파일에서 maxUnavailable=1, maxSurge=0으로 설정한 상태에서 위와 동일한 방법으로 rollingupdate 수행
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-deployment-rollingupdate
+spec:
+  strategy:
+    type: RollingUpdate			
+    rollingUpdate:				
+      maxUnavailable: 1			
+      maxSurge: 0				
+  replicas: 3				    
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      containers:
+      - name: nginx-container
+        image: docker.io/nginx:1.16
+      imagePullSecrets:
+      - name: regcred
+```
+```
+vagrant@master-node:~$ kubectl get rs --watch
+NAME                                        DESIRED   CURRENT   READY   AGE
+sample-deployment-rollingupdate-9ff76c956   3         3         3       37s
+sample-deployment-rollingupdate-77dc8d9fb   0         0         0       0s
+sample-deployment-rollingupdate-77dc8d9fb   0         0         0       0s
+sample-deployment-rollingupdate-9ff76c956   2         3         3       49s
+sample-deployment-rollingupdate-77dc8d9fb   1         0         0       0s
+sample-deployment-rollingupdate-9ff76c956   2         3         3       49s
+sample-deployment-rollingupdate-77dc8d9fb   1         0         0       0s
+sample-deployment-rollingupdate-9ff76c956   2         2         2       49s
+sample-deployment-rollingupdate-77dc8d9fb   1         1         0       0s
+sample-deployment-rollingupdate-77dc8d9fb   1         1         1       1s
+sample-deployment-rollingupdate-9ff76c956   1         2         2       50s
+sample-deployment-rollingupdate-77dc8d9fb   2         1         1       1s
+sample-deployment-rollingupdate-9ff76c956   1         2         2       50s
+sample-deployment-rollingupdate-77dc8d9fb   2         1         1       1s
+sample-deployment-rollingupdate-9ff76c956   1         1         1       50s
+sample-deployment-rollingupdate-77dc8d9fb   2         2         1       1s
+sample-deployment-rollingupdate-77dc8d9fb   2         2         2       2s
+sample-deployment-rollingupdate-9ff76c956   0         1         1       51s
+sample-deployment-rollingupdate-77dc8d9fb   3         2         2       2s
+sample-deployment-rollingupdate-9ff76c956   0         1         1       51s
+sample-deployment-rollingupdate-77dc8d9fb   3         2         2       2s
+sample-deployment-rollingupdate-9ff76c956   0         0         0       51s
+sample-deployment-rollingupdate-77dc8d9fb   3         3         2       2s
+sample-deployment-rollingupdate-77dc8d9fb   3         3         3       3s
+```
 ### Blue/Green ###
+
 ### Canary ###
