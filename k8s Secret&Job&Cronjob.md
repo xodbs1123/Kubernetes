@@ -827,7 +827,7 @@ def create_job_manifest(n_job, n_node):
     template = client.V1PodTemplateSpec(
         spec=client.V1PodSpec(containers=[container],
                               restart_policy="Never"
-                              image_pull_secrets=["regcred"]
+                              image_pull_secrets=[client.V1LocalObjectReference(name='regcred')]
                               ))
     spec = client.V1JobSpec(
         backoff_limit=4,
@@ -866,4 +866,48 @@ if __name__ == '__main__':
 ### 파이썬 모듈 설치 ###
 ```
 vagrant@master-node:~$ sudo apt-get update
+vagrant@master-node:~$ sudo apt-get install -y python3 python3-pip
+vagrant@master-node:~$ pip3 install pika
+vagrant@master-node:~$ pip3 install kubernetes
+```
 
+### job-initiator 실행 및 확인 ###
+```
+vagrant@master-node:~$ python3 job-initiator.py
+
+vagrant@master-node:~$ kubectl get job,pod
+NAME              COMPLETIONS   DURATION   AGE
+job.batch/pngen   4/4           39s        98s
+
+NAME                                  READY   STATUS      RESTARTS   AGE
+pod/pngen-dn5xq                       0/1     Completed   0          98s
+pod/pngen-lmc2w                       0/1     Completed   0          62s
+pod/pngen-n295c                       0/1     Completed   0          98s
+pod/pngen-zclw2                       0/1     Completed   0          66s
+pod/taskque-deploy-77f7fdd8d6-7w9xv   1/1     Running     0          42m
+
+vagrant@master-node:~$ kubectl logs pod/pngen-lmc2w
+['3001', ' 1000']
+[3001 3011 3019 3023 3037 3041 3049 3061 3067 3079 3083 3089 3109 3119
+ 3121 3137 3163 3167 3169 3181 3187 3191 3203 3209 3217 3221 3229 3251
+ 3253 3257 3259 3271 3299 3301 3307 3313 3319 3323 3329 3331 3343 3347
+ 3359 3361 3371 3373 3389 3391 3407 3413 3433 3449 3457 3461 3463 3467
+ 3469 3491 3499 3511 3517 3527 3529 3533 3539 3541 3547 3557 3559 3571
+ 3581 3583 3593 3607 3613 3617 3623 3631 3637 3643 3659 3671 3673 3677
+ 3691 3697 3701 3709 3719 3727 3733 3739 3761 3767 3769 3779 3793 3797
+ 3803 3821 3823 3833 3847 3851 3853 3863 3877 3881 3889 3907 3911 3917
+ 3919 3923 3929 3931 3943 3947 3967 3989]
+
+vagrant@master-node:~$ kubectl logs pod/pngen-zclw2
+['1001', ' 1000']
+[1009 1013 1019 1021 1031 1033 1039 1049 1051 1061 1063 1069 1087 1091
+ 1093 1097 1103 1109 1117 1123 1129 1151 1153 1163 1171 1181 1187 1193
+ 1201 1213 1217 1223 1229 1231 1237 1249 1259 1277 1279 1283 1289 1291
+ 1297 1301 1303 1307 1319 1321 1327 1361 1367 1373 1381 1399 1409 1423
+ 1427 1429 1433 1439 1447 1451 1453 1459 1471 1481 1483 1487 1489 1493
+ 1499 1511 1523 1531 1543 1549 1553 1559 1567 1571 1579 1583 1597 1601
+ 1607 1609 1613 1619 1621 1627 1637 1657 1663 1667 1669 1693 1697 1699
+ 1709 1721 1723 1733 1741 1747 1753 1759 1777 1783 1787 1789 1801 1811
+ 1823 1831 1847 1861 1867 1871 1873 1877 1879 1889 1901 1907 1913 1931
+ 1933 1949 1951 1973 1979 1987 1993 1997 1999]
+```
