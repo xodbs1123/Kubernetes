@@ -256,7 +256,7 @@ https://kubernetes.io/ko/docs/concepts/configuration/secret/#secret-types
   - .spec.parallelism 필드에 설정
   - 기본값은 1, 잡을 정지하려면 0으로 설정
   - **/home/vagrant/job-normal-end.yaml** 작성
-  ```yaml
+```yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -270,7 +270,7 @@ spec:
         command: ["sh", "-c", "sleep 5; exit 0"]
       restartPolicy: Never
   completions: 6      ## 총 실행 회수 (0 보다 큰 정수를 설정)
-  ```
+```
 ```
 vagrant@master-node:~$ kubectl apply -f job-normal-end.yaml
 job.batch/job-normal-end created
