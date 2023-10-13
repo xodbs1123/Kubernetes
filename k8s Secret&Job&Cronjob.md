@@ -255,6 +255,9 @@ https://kubernetes.io/ko/docs/concepts/configuration/secret/#secret-types
 - 잡 하나가 동시에 실행할 파드를 지정
 - .spec.parallelism 필드에 설정
 - 기본값은 1, 잡을 정지하려면 0으로 설정
+
+### 잡을 이용해서 정상적으로 종료되는 파드를 실행 ###
+
 - **/home/vagrant/job-normal-end.yaml** 작성
 
 ```yaml
@@ -324,3 +327,543 @@ Events:
   Normal  SuccessfulCreate  21s   job-controller  Created pod: job-normal-end-cqfq8
   Normal  Completed         11s   job-controller  Job completed                         <= 잡이 종료되는 것을 확인
 ```
+
+### parallelism을 설정해서 파드를 병렬로 실행 ###
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-normal-end
+spec:
+  template:
+    spec:
+      containers:
+      - name: busybox
+        image: docker.io/busybox
+        command: ["sh", "-c", "sleep 5; exit 0"]
+      restartPolicy: Never
+  completions: 6      ## 총 실행 회수 (0 보다 큰 정수를 설정)
+  parallelism: 2      ## 동시 실행할 파드의 개수
+```
+```
+vagrant@master-node:~$ kubectl apply -f job-normal-end.yaml
+job.batch/job-normal-end created
+
+vagrant@master-node:~$ kubectl describe job job-normal-end
+Name:             job-normal-end
+Namespace:        default
+Selector:         batch.kubernetes.io/controller-uid=22b7aa9a-c6f2-4c13-8766-bbcdebceb2c7
+Labels:           batch.kubernetes.io/controller-uid=22b7aa9a-c6f2-4c13-8766-bbcdebceb2c7
+                  batch.kubernetes.io/job-name=job-normal-end
+                  controller-uid=22b7aa9a-c6f2-4c13-8766-bbcdebceb2c7
+                  job-name=job-normal-end
+Annotations:      batch.kubernetes.io/job-tracking:
+Parallelism:      2
+Completions:      6
+Completion Mode:  NonIndexed
+Start Time:       Fri, 13 Oct 2023 05:04:18 +0000
+Completed At:     Fri, 13 Oct 2023 05:04:52 +0000
+Duration:         34s
+Pods Statuses:    0 Active (0 Ready) / 6 Succeeded / 0 Failed
+Pod Template:
+  Labels:  batch.kubernetes.io/controller-uid=22b7aa9a-c6f2-4c13-8766-bbcdebceb2c7
+           batch.kubernetes.io/job-name=job-normal-end
+           controller-uid=22b7aa9a-c6f2-4c13-8766-bbcdebceb2c7
+           job-name=job-normal-end
+  Containers:
+   busybox:
+    Image:      docker.io/busybox
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      sh
+      -c
+      sleep 5; exit 0
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age   From            Message
+  ----    ------            ----  ----            -------
+  Normal  SuccessfulCreate  53s   job-controller  Created pod: job-normal-end-4s88w    <= 파드가 두 개씩 실행되고 종료된 것을 확인할 수 있음
+  Normal  SuccessfulCreate  53s   job-controller  Created pod: job-normal-end-68jkb
+  Normal  SuccessfulCreate  42s   job-controller  Created pod: job-normal-end-zhfvc
+  Normal  SuccessfulCreate  42s   job-controller  Created pod: job-normal-end-kmm9h
+  Normal  SuccessfulCreate  32s   job-controller  Created pod: job-normal-end-ps698
+  Normal  SuccessfulCreate  32s   job-controller  Created pod: job-normal-end-rkngc
+  Normal  Completed         19s   job-controller  Job completed
+```
+### 잡을 이용해서 비정상적으로 종료되는 파드를 실행 ###
+- **/home/vagrant/job-abnormal-end.yaml**
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-abnormal-end
+spec:
+  template:
+    spec:
+      containers:
+      - name: busybox
+        image: docker.io/busybox
+        command: ["sh", "-c", "sleep 5; exit 1"]
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Never
+  # completions: 1      ## 총 실행 회수 (기본값 1)
+  # parallelism: 1      ## 동시 실행할 파드의 개수 (기본값 1)
+  backoffLimit: 3       ## 실패했을 때 재실행하는 최대 실행 회수
+```
+```
+vagrant@master-node:~$ kubectl apply -f job-abnormal-end.yaml
+job.batch/job-normal-end created
+
+vagrant@master-node:~$ kubectl get job,pod
+NAME                         COMPLETIONS   DURATION   AGE
+job.batch/job-abnormal-end   0/1           11m        11m
+
+NAME                         READY   STATUS   RESTARTS   AGE
+pod/job-abnormal-end-2cgpt   0/1     Error    0          11m
+pod/job-abnormal-end-2xxs2   0/1     Error    0          11m
+pod/job-abnormal-end-4nglp   0/1     Error    0          10m
+pod/job-abnormal-end-dcj27   0/1     Error    0          11m
+
+vagrant@master-node:~$ kubectl describe job job-abnormal-end
+Name:             job-abnormal-end
+Namespace:        default
+Selector:         batch.kubernetes.io/controller-uid=a8ecd0b5-7a10-4e49-bdcf-5e68cda47357
+Labels:           batch.kubernetes.io/controller-uid=a8ecd0b5-7a10-4e49-bdcf-5e68cda47357
+                  batch.kubernetes.io/job-name=job-abnormal-end
+                  controller-uid=a8ecd0b5-7a10-4e49-bdcf-5e68cda47357
+                  job-name=job-abnormal-end
+Annotations:      batch.kubernetes.io/job-tracking:
+Parallelism:      1
+Completions:      1
+Completion Mode:  NonIndexed
+Start Time:       Fri, 13 Oct 2023 05:19:07 +0000
+Pods Statuses:    0 Active (0 Ready) / 0 Succeeded / 4 Failed
+Pod Template:
+  Labels:  batch.kubernetes.io/controller-uid=a8ecd0b5-7a10-4e49-bdcf-5e68cda47357
+           batch.kubernetes.io/job-name=job-abnormal-end
+           controller-uid=a8ecd0b5-7a10-4e49-bdcf-5e68cda47357
+           job-name=job-abnormal-end
+  Containers:
+   busybox:
+    Image:      docker.io/busybox
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      sh
+      -c
+      sleep 5; exit 1
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type     Reason                Age   From            Message
+  ----     ------                ----  ----            -------
+  Normal   SuccessfulCreate      12m   job-controller  Created pod: job-abnormal-end-2cgpt  <= 파드가 4번 실행(3번 재시작)
+  Normal   SuccessfulCreate      12m   job-controller  Created pod: job-abnormal-end-2xxs2
+  Normal   SuccessfulCreate      11m   job-controller  Created pod: job-abnormal-end-dcj27
+  Normal   SuccessfulCreate      10m   job-controller  Created pod: job-abnormal-end-4nglp
+  Warning  BackoffLimitExceeded  10m   job-controller  Job has reached the specified backoff limit
+```
+### 여러 컨테이너 중 일부가 이상 종료할 경우 => 파드는 비정상 종료로 처리 ###
+- **/home/vagrant/job-container-failed.yaml**
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-container-failed
+spec:
+  template:
+    spec:
+      containers:
+      - name: busybox-normal
+        image: docker.io/busybox
+        command: ["sh", "-c", "sleep 5; exit 0"]
+      - name: busybox-abnormal
+        image: docker.io/busybox
+        command: ["sh", "-c", "sleep 5; exit 1"]        
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Never
+  # completions: 1      ## 총 실행 회수 (기본값 1)
+  # parallelism: 1      ## 동시 실행할 파드의 개수 (기본값 1)
+  backoffLimit: 2       ## 실패했을 때 재실행하는 최대 실행 회수
+```
+```
+vagrant@master-node:~$ kubectl apply -f job-container-failed.yaml
+job.batch/job-container-failed created
+
+vagrant@master-node:~$ kubectl describe job job-container-failed
+Name:             job-container-failed
+Namespace:        default
+Selector:         batch.kubernetes.io/controller-uid=c349351a-9b35-4fa9-bb78-f42d822bf70b
+Labels:           batch.kubernetes.io/controller-uid=c349351a-9b35-4fa9-bb78-f42d822bf70b
+                  batch.kubernetes.io/job-name=job-container-failed
+                  controller-uid=c349351a-9b35-4fa9-bb78-f42d822bf70b
+                  job-name=job-container-failed
+Annotations:      batch.kubernetes.io/job-tracking:
+Parallelism:      1
+Completions:      1
+Completion Mode:  NonIndexed
+Start Time:       Fri, 13 Oct 2023 05:38:15 +0000
+Pods Statuses:    0 Active (0 Ready) / 0 Succeeded / 3 Failed
+Pod Template:
+  Labels:  batch.kubernetes.io/controller-uid=c349351a-9b35-4fa9-bb78-f42d822bf70b
+           batch.kubernetes.io/job-name=job-container-failed
+           controller-uid=c349351a-9b35-4fa9-bb78-f42d822bf70b
+           job-name=job-container-failed
+  Containers:
+   busybox-normal:
+    Image:      docker.io/busybox
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      sh
+      -c
+      sleep 5; exit 0
+    Environment:  <none>
+    Mounts:       <none>
+   busybox-abnormal:
+    Image:      docker.io/busybox
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      sh
+      -c
+      sleep 5; exit 1
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type     Reason                Age   From            Message
+  ----     ------                ----  ----            -------
+  Normal   SuccessfulCreate      64s   job-controller  Created pod: job-container-failed-hd7hp
+  Normal   SuccessfulCreate      44s   job-controller  Created pod: job-container-failed-nlc8k
+  Normal   SuccessfulCreate      14s   job-controller  Created pod: job-container-failed-kdp4p
+  Warning  BackoffLimitExceeded  1s    job-controller  Job has reached the specified backoff limit
+```
+```
+vagrant@master-node:~$ kubectl get pod
+NAME                         READY   STATUS   RESTARTS   AGE
+job-container-failed-5j4g5   0/2     Error    0          2m28s
+job-container-failed-gqrvd   0/2     Error    0          117s
+job-container-failed-xm47b   0/2     Error    0          2m49s
+                                     ~~~~~
+                                     정상종료 먼저되면 Completed가 되고, 비정상종료가 먼저되면 Error가 됨
+```
+
+## 잡 컨트롤러를 이용한 소수 계산 ##
+### 소수를 만들어서 출력하는 프로그램을 numpy로 작성 ###
+- C:\kubernetes\prime_number.py 작성
+```python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+import os
+import numpy as np
+import math
+np.set_printoptions(threshold='nan')
+
+
+
+
+# 소수 판정 함수
+def is_prime(n):
+    if n % 2 == 0 and n > 2:
+        return False
+    return all(n % i for i in range(3, int(math.sqrt(n)) + 1, 2))
+
+
+
+
+# 배열에 1부터 차례대로 숫자를 배치
+nstart = eval(os.environ.get("A_START_NUM"))  
+nsize  = eval(os.environ.get("A_SIZE_NUM"))    
+nend   = nstart + nsize                        
+ay     = np.arange(nstart, nend)              
+
+
+# 소수 판정 함수를 벡터화
+pvec = np.vectorize(is_prime)
+
+
+# 배열 요소에 적용
+primes_tf = pvec(ay)
+
+
+# 소수만 추출하여 표시
+primes = np.extract(primes_tf, ay)
+print primes
+```
+- C:\kubernetes\requirements.txt
+```
+numpy==1.14.1
+```
+
+### Dockerfile 작성 ###
+- 
+```dokcerfile
+FROM python:2
+COPY ./requirements.txt /requirements.txt
+COPY ./prime_number.py /prime_number.py
+RUN pip install --no-cache-dir -r requirements.txt
+CMD [ "python", "/prime_number.py" ]
+```
+
+### 이미지 빌드 및 도커허브 등록 ###
+```
+c:\kubernetes>docker image build -t primenumber_generator .
+
+# 테스트
+c:\kubernetes>docker container run -e A_START_NUM=1 -e A_SIZE_NUM=20 primenumber_generator
+[ 1  2  3  5  7 11 13 17 19]
+
+# 도커허브 등록
+c:\kubernetes>docker image tag primenumber_generator tyunme/primenumber_generator:1.0
+
+c:\kubernetes>docker login
+Authenticating with existing credentials...
+Login Succeeded
+
+c:\kubernetes>docker image push tyunme/primenumber_generator:1.0
+```
+
+### 잡 컨트롤러의 매니페스트 파일 작성 ###
+- **/home/vagrant/primenumber_job.yaml** 작성
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: primenumber-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: primenumber-generator
+        image: docker.io/tyunme/primenumber_generator:1.0
+        env:
+        - name: A_START_NUM
+          value: "2"
+        - name: A_SIZE_NUM
+          value: "10**6"
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: regcred  
+  backoffLimit: 4
+```
+
+### 매니페스트 파일 실행 ###
+```
+vagrant@master-node:~$ kubectl apply -f primenumber_job.yaml
+job.batch/primenumber-job created
+
+vagrant@master-node:~$ kubectl get pod,job
+NAME                        READY   STATUS      RESTARTS   AGE
+pod/primenumber-job-xx648   0/1     Completed   0          16m
+
+NAME                        COMPLETIONS   DURATION   AGE
+job.batch/primenumber-job   1/1           70s        16m
+
+vagrant@master-node:~$ kubectl logs pod/primenumber-job-xx648
+```
+
+## 메시지 브로커와 잡 컨트롤러를 조합 ##
+
+![image](https://github.com/xodbs1123/Kubernetes/assets/61976898/70f48fee-1068-486a-8a73-09fb3d484784)
+
+### 표준입력으로 계산범위를 전달받아서 소수를 계산하는 파이썬 어플리케이션 제작 ###
+- **C:\kubernetes\prime_number_generator.py**
+```python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys
+import numpy as np
+import math
+np.set_printoptions(threshold='nan')
+
+# 소수 판정 함수
+def is_prime(n):
+    if n % 2 == 0 and n > 2:
+        return False
+    return all(n % i for i in range(3, int(math.sqrt(n)) + 1, 2))
+
+
+# 소수 생성 함수
+def prime_number_generater(nstart, nsize):
+    nend = nstart + nsize
+    ay = np.arange(nstart, nend)
+    # 소수 판정 함수 벡터화
+    pvec = np.vectorize(is_prime)
+    # 배열 요소에 적용
+    primes_t = pvec(ay)
+    # 소수만 추출하여 표시
+    primes = np.extract(primes_t, ay)
+    return primes
+
+
+if __name__ == '__main__':
+    p = sys.stdin.read().split(",")
+    print p
+    print prime_number_generater(int(p[0]), int(p[1]))
+```
+- C:\kubernetes\requirements.txt
+```
+numpy==1.14.1
+```
+### Dockerfile 작성 ###
+- C:\kubernetes\Dockerfile
+```dockerfile
+FROM ubuntu:16.04
+RUN apt-get update && \
+    apt-get install -y curl ca-certificates amqp-tools python python-pip
+COPY ./requirements.txt /requirements.txt
+COPY ./prime_number_generator.py /prime_number_generator.py
+RUN pip install --no-cache-dir -r requirements.txt
+CMD /usr/bin/amqp-consume --url=$BROKER_URL -q $QUEUE -c 1 /prime_number_generator.py
+```
+### 이미지 빌드 및 도커 허브 등록 ###
+```
+# 이미지 빌드
+c:\kubernetes>docker build --tag tyunme/prime_number_generator:2.0 .
+
+# 도커허브 등록
+c:\kubernetes>docker image push tyunme/prime_number_generator:2.0
+```
+
+### 쿠버네티스 클러스터에 RabbitMQ 배포 ###
+- **/home/vagrant/rabbitmq.yaml**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskque-deploy
+spec:
+  selector:
+    matchLabels:
+      app: taskque
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: taskque
+    spec:
+      containers:
+      - image: docker.io/rabbitmq
+        name: rabbitmq
+        ports:
+        - containerPort: 5672
+        resources:
+          limits:
+            cpu: 100m
+      imagePullSecrets:
+      - name: regcred
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskque-svc
+spec:
+  type: NodePort
+  ports:
+  - port: 5672
+    nodePort: 31672
+  selector:
+    app: taskque
+```
+```
+vagrant@master-node:~$ kubectl apply -f rabbitmq.yaml
+deployment.apps/taskque-deploy created
+service/taskque-svc created
+```
+
+### job-initiator.py 작성 ###
+- **/home/vagrant/job-initiator.py**
+```python
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+
+
+import yaml
+import pika
+from kubernetes import client, config
+
+
+OBJECT_NAME = "pngen"
+qname = 'taskque'
+
+
+# 메시지 브로커 접속
+def create_queue():
+    qmgr_cred = pika.PlainCredentials('guest', 'guest')     
+    qmgr_host = '10.0.0.10'                                 ## 노드 IP를 설정                          
+    qmgr_port = '31672'                                     ## 노드 PORT        
+    qmgr_pram = pika.ConnectionParameters(
+        host=qmgr_host,
+        port=qmgr_port,
+        credentials=qmgr_cred)
+    conn = pika.BlockingConnection(qmgr_pram)
+    chnl = conn.channel()
+    chnl.queue_declare(queue=qname)
+    return chnl
+
+
+# 잡 매니페스트 작성
+def create_job_manifest(n_job, n_node):
+    container = client.V1Container(
+        name="pn-generator",
+        image="tyunme/prime_number_generator:2.0",
+        env=[
+            client.V1EnvVar(name="BROKER_URL",
+                            value="amqp://guest:guest@taskque-svc:5672"),
+            client.V1EnvVar(name="QUEUE", value="taskque")
+        ]
+        
+    )
+    template = client.V1PodTemplateSpec(
+        spec=client.V1PodSpec(containers=[container],
+                              restart_policy="Never"
+                              image_pull_secrets=["regcred"]
+                              ))
+    spec = client.V1JobSpec(
+        backoff_limit=4,
+        template=template,
+        completions=n_job,
+        parallelism=n_node)
+    job = client.V1Job(
+        api_version="batch/v1",
+        kind="Job",
+        metadata=client.V1ObjectMeta(name=OBJECT_NAME),
+        spec=spec)
+    return job
+
+
+
+
+if __name__ == '__main__':
+
+
+    job_parms = [[1, 1000], [1001, 1000], [2001, 1000], [3001, 1000]]
+    jobs = len(job_parms)
+    nodes = 2
+
+
+    queue = create_queue()
+    for param_n in job_parms:
+        param = str(param_n).replace('[', '').replace(']', '')
+        queue.basic_publish(exchange='', routing_key=qname, body=param)
+
+
+    config.load_kube_config()
+    client.BatchV1Api().create_namespaced_job(
+        body=create_job_manifest(jobs, nodes), namespace="default")
+```
+
+### 파이썬 모듈 설치 ###
+```
+vagrant@master-node:~$ sudo apt-get update
+
