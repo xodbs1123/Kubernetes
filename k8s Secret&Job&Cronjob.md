@@ -251,11 +251,12 @@ https://kubernetes.io/ko/docs/concepts/configuration/secret/#secret-types
 - **정기 실행 배치 처리**
   - 크론잡은 설정한 시간에 정기적으로 잡을 실행 => 데이터의 백업이나 매시간 마다 실행되는 배치 처리 등을 실행
 
-  ### 잡 병렬성 관리 ###
-  - 잡 하나가 동시에 실행할 파드를 지정
-  - .spec.parallelism 필드에 설정
-  - 기본값은 1, 잡을 정지하려면 0으로 설정
-  - **/home/vagrant/job-normal-end.yaml** 작성
+### 잡 병렬성 관리 ###
+- 잡 하나가 동시에 실행할 파드를 지정
+- .spec.parallelism 필드에 설정
+- 기본값은 1, 잡을 정지하려면 0으로 설정
+- **/home/vagrant/job-normal-end.yaml** 작성
+
 ```yaml
 apiVersion: batch/v1
 kind: Job
